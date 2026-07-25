@@ -29,6 +29,7 @@ class TradingEngine:
         claude_analyzer: ClaudeAnalyzer,
         report_generator: ReportGenerator,
         email_service: EmailService,
+        top_n: int,
     ):
         self.collector = collector
         self.scorer = scorer
@@ -37,6 +38,7 @@ class TradingEngine:
         self.claude_analyzer = claude_analyzer
         self.report_generator = report_generator
         self.email_service = email_service
+        self.top_n = top_n
 
     @classmethod
     def from_settings(cls, settings: Settings) -> "TradingEngine":
@@ -67,6 +69,7 @@ class TradingEngine:
             ),
             report_generator=ReportGenerator(settings.snapshots.top_n),
             email_service=EmailService(settings.email),
+            top_n=settings.snapshots.top_n,
         )
 
     def run(self) -> None:
@@ -89,9 +92,21 @@ class TradingEngine:
         previous = self.snapshot_manager.load_latest()
 
         if previous is None:
+            top_stocks = scored[: self.top_n]
             logger.info(
                 f"Initial scan - no previous snapshot. Establishing a baseline of "
-                f"{len(scored)} stock(s); skipping Claude analysis and email."
+                f"{len(scored)} stock(s); analyzing the Top {len(top_stocks)} for "
+                f"the first report."
+            )
+            change_reasons = {
+                s.ticker: "Initial scan baseline candidate." for s in top_stocks
+            }
+            self._analyze_report_and_email(
+                scored=scored,
+                events=[],
+                candidates=top_stocks,
+                change_reasons=change_reasons,
+                subject="Initial scan - baseline established",
             )
             self.snapshot_manager.save(scored)
             return
@@ -105,11 +120,29 @@ class TradingEngine:
 
         changed_stocks, change_reasons = self._select_changed(scored, events)
 
+        self._analyze_report_and_email(
+            scored=scored,
+            events=events,
+            candidates=changed_stocks,
+            change_reasons=change_reasons,
+            subject=f"{len(events)} change(s) detected",
+        )
+
+        self.snapshot_manager.save(scored)
+
+    def _analyze_report_and_email(
+        self,
+        scored,
+        events,
+        candidates,
+        change_reasons,
+        subject: str,
+    ) -> None:
         try:
-            analyzed = self.claude_analyzer.analyze(changed_stocks, change_reasons)
+            analyzed = self.claude_analyzer.analyze(candidates, change_reasons)
         except Exception as exc:
             logger.error(f"Claude analysis step failed: {exc}")
-            analyzed = changed_stocks
+            analyzed = candidates
 
         html_report = None
         try:
@@ -119,14 +152,9 @@ class TradingEngine:
 
         if html_report is not None:
             try:
-                self.email_service.send(
-                    subject=f"{len(events)} change(s) detected",
-                    html_body=html_report,
-                )
+                self.email_service.send(subject=subject, html_body=html_report)
             except Exception as exc:
                 logger.error(f"Email send failed: {exc}")
-
-        self.snapshot_manager.save(scored)
 
     @staticmethod
     def _select_changed(scored, events):
