@@ -1,39 +1,41 @@
-from auth.playwright_manager import Browser
+"""CLI entrypoint for the Finviz AI Trading Intelligence Platform.
 
-from finviz.downloader import download
-from finviz.screener import FinvizScreener
-from finviz.loader import FinvizLoader
-from finviz.validator import FinvizValidator
-from finviz.cleaner import FinvizCleaner
+    python app.py --once        run a single scan cycle immediately
+    python app.py --schedule    start the APScheduler market-hours loop
+"""
+
+from __future__ import annotations
+
+import argparse
+
+from config.settings import load_settings
+from engine import TradingEngine
+from scheduler import run_scheduler
+from utils.logging_config import configure_logging
 
 
-def main():
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        description="Finviz AI Trading Intelligence Platform"
+    )
+    mode = parser.add_mutually_exclusive_group(required=True)
+    mode.add_argument(
+        "--once", action="store_true", help="Run a single scan cycle immediately."
+    )
+    mode.add_argument(
+        "--schedule", action="store_true", help="Start the market-hours scheduler."
+    )
+    args = parser.parse_args()
 
-    browser = Browser()
+    settings = load_settings()
+    configure_logging(settings.logging)
 
-    context = browser.start()
+    engine = TradingEngine.from_settings(settings)
 
-    page = context.new_page()
-
-    screener = FinvizScreener(page)
-
-    screener.open()
-
-    csv_file = download(page)
-
-    context.close()
-
-    browser.stop()
-
-    loader = FinvizLoader(csv_file)
-
-    df = loader.load()
-
-    FinvizValidator.validate(df)
-
-    df = FinvizCleaner.clean(df)
-
-    print(df.head())
+    if args.once:
+        engine.run()
+    else:
+        run_scheduler(engine, settings.market_hours)
 
 
 if __name__ == "__main__":
