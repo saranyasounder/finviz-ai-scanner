@@ -1,10 +1,147 @@
+"""Central configuration: merges config/settings.yaml with .env secrets into one Settings object."""
+
+from __future__ import annotations
+
+import os
+from dataclasses import dataclass
 from pathlib import Path
+
+import yaml
+from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-DOWNLOAD_DIR = BASE_DIR / "downloads"
-DOWNLOAD_DIR.mkdir(parents=True, exist_ok=True)
+load_dotenv(BASE_DIR / ".env")
 
-FINVIZ_URL = "https://elite.finviz.com/screener"
 
-TIMEOUT = 10000
+def _load_yaml(path: Path) -> dict:
+    with path.open("r", encoding="utf-8") as f:
+        return yaml.safe_load(f) or {}
+
+
+@dataclass(frozen=True)
+class BrowserSettings:
+    profile_dir: Path
+    headless: bool
+    download_timeout_ms: int
+
+
+@dataclass(frozen=True)
+class MarketHours:
+    timezone: str
+    start_hour: int
+    end_hour: int
+    days: str
+
+
+@dataclass(frozen=True)
+class SnapshotSettings:
+    directory: Path
+    retention_days: int
+    top_n: int
+
+
+@dataclass(frozen=True)
+class ChangeDetectionThresholds:
+    score_delta: float
+    relative_volume_delta: float
+    gap_delta_pct: float
+    price_delta_pct: float
+
+
+@dataclass(frozen=True)
+class ClaudeSettings:
+    api_key: str
+    model: str
+    max_tokens: int
+
+
+@dataclass(frozen=True)
+class EmailSettings:
+    smtp_host: str
+    smtp_port: int
+    smtp_username: str
+    smtp_password: str
+    from_addr: str
+    to_addrs: list[str]
+    subject_prefix: str
+
+
+@dataclass(frozen=True)
+class LoggingSettings:
+    directory: Path
+    rotation: str
+    retention: str
+    level: str
+
+
+@dataclass(frozen=True)
+class Settings:
+    base_dir: Path
+    downloads_dir: Path
+    finviz_screener_url: str
+    browser: BrowserSettings
+    market_hours: MarketHours
+    snapshots: SnapshotSettings
+    change_detection: ChangeDetectionThresholds
+    claude: ClaudeSettings
+    email: EmailSettings
+    logging: LoggingSettings
+    scoring_config_path: Path
+    prompts_config_path: Path
+
+
+def load_settings(config_dir: Path | None = None) -> Settings:
+    """Load settings.yaml plus .env secrets into a single immutable Settings object."""
+
+    config_dir = config_dir or (BASE_DIR / "config")
+    raw = _load_yaml(config_dir / "settings.yaml")
+
+    screener_url = os.getenv("FINVIZ_SCREENER_URL")
+    if not screener_url:
+        raise RuntimeError(
+            "FINVIZ_SCREENER_URL is not set in the environment (.env)."
+        )
+
+    to_addrs_raw = os.getenv("EMAIL_TO", "")
+    to_addrs = [addr.strip() for addr in to_addrs_raw.split(",") if addr.strip()]
+
+    return Settings(
+        base_dir=BASE_DIR,
+        downloads_dir=BASE_DIR / "downloads",
+        finviz_screener_url=screener_url,
+        browser=BrowserSettings(
+            profile_dir=BASE_DIR / raw["browser"]["profile_dir"],
+            headless=raw["browser"]["headless"],
+            download_timeout_ms=raw["browser"]["download_timeout_ms"],
+        ),
+        market_hours=MarketHours(**raw["market_hours"]),
+        snapshots=SnapshotSettings(
+            directory=BASE_DIR / raw["snapshots"]["directory"],
+            retention_days=raw["snapshots"]["retention_days"],
+            top_n=raw["snapshots"]["top_n"],
+        ),
+        change_detection=ChangeDetectionThresholds(**raw["change_detection"]),
+        claude=ClaudeSettings(
+            api_key=os.getenv("ANTHROPIC_API_KEY", ""),
+            model=raw["claude"]["model"],
+            max_tokens=raw["claude"]["max_tokens"],
+        ),
+        email=EmailSettings(
+            smtp_host=os.getenv("SMTP_HOST", ""),
+            smtp_port=int(os.getenv("SMTP_PORT", "587")),
+            smtp_username=os.getenv("SMTP_USERNAME", ""),
+            smtp_password=os.getenv("SMTP_PASSWORD", ""),
+            from_addr=os.getenv("EMAIL_FROM", ""),
+            to_addrs=to_addrs,
+            subject_prefix=raw["email"]["subject_prefix"],
+        ),
+        logging=LoggingSettings(
+            directory=BASE_DIR / raw["logging"]["directory"],
+            rotation=raw["logging"]["rotation"],
+            retention=raw["logging"]["retention"],
+            level=raw["logging"]["level"],
+        ),
+        scoring_config_path=config_dir / "scoring.yaml",
+        prompts_config_path=config_dir / "prompts.yaml",
+    )

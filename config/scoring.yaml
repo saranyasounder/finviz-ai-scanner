@@ -1,0 +1,70 @@
+# Momentum scoring rules, evaluated generically by analysis/momentum_scorer.py.
+# Adding a new scoring factor only requires adding a rule here - no code changes.
+#
+# rule types:
+#   threshold_high_medium: field, high, medium, high_score, medium_score
+#     -> high_score if value > high, medium_score if value > medium, else 0
+#   threshold_single: field, threshold, score
+#     -> score if value > threshold, else 0
+#   range: field, min, max, score
+#     -> score if min <= value <= max, else 0
+
+rules:
+  relative_volume:
+    type: threshold_high_medium
+    field: relative_volume
+    high: 5
+    medium: 3
+    high_score: 25
+    medium_score: 15
+
+  gap:
+    type: threshold_high_medium
+    field: gap
+    high: 5
+    medium: 2
+    high_score: 20
+    medium_score: 10
+
+  atr:
+    type: threshold_single
+    field: atr
+    threshold: 1
+    score: 10
+
+  rsi:
+    type: range
+    field: rsi
+    min: 60
+    max: 80
+    score: 10
+
+  sma20:
+    type: threshold_single
+    field: sma20
+    threshold: 0
+    score: 10
+
+  sma50:
+    type: threshold_single
+    field: sma50
+    threshold: 0
+    score: 10
+
+  short_float:
+    type: threshold_single
+    field: short_float
+    threshold: 10
+    score: 5
+
+  institutional_ownership:
+    type: threshold_single
+    field: institutional_ownership
+    threshold: 50
+    score: 5
+
+  beta:
+    type: threshold_single
+    field: beta
+    threshold: 1.5
+    score: 5
