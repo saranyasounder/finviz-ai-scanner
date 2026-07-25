@@ -1,0 +1,21 @@
+# Secrets
+.env
+
+# Browser persistent profile (contains live session cookies/cache)
+chrome_profile/
+
+# Downloaded CSVs and generated data
+downloads/
+data/
+logs/
+
+# Python
+__pycache__/
+*.pyc
+venv/
+.venv/
+*.egg-info/
+
+# Editors
+.vscode/
+.idea/
