@@ -1,25 +1,34 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 import yaml
-from anthropic import Anthropic
 from loguru import logger
+from openai import OpenAI
 
 from config.settings import ClaudeSettings
 from models.claude_analysis import ClaudeAnalysis
 from models.stock_candidate import StockCandidate
 
+_JSON_FENCE = re.compile(r"^```(?:json)?\s*|\s*```$", re.IGNORECASE)
+
 
 class ClaudeAnalyzer:
     """Sends only changed/top-ranked stocks to Claude for trade analysis.
     Claude never receives the raw screener CSV - only the already-scored,
-    already-filtered StockCandidate fields relevant to a trade decision."""
+    already-filtered StockCandidate fields relevant to a trade decision.
+
+    Routed through OpenRouter's OpenAI-compatible API rather than Anthropic's
+    native API, since that's the key/provider configured for this project."""
 
     def __init__(self, claude_settings: ClaudeSettings, prompts_path: Path):
         self.settings = claude_settings
-        self.client = Anthropic(api_key=claude_settings.api_key)
+        self.client = OpenAI(
+            base_url=claude_settings.base_url,
+            api_key=claude_settings.api_key,
+        )
 
         with prompts_path.open("r", encoding="utf-8") as f:
             prompts = yaml.safe_load(f) or {}
@@ -59,14 +68,21 @@ class ClaudeAnalyzer:
             change_reason=change_reason,
         )
 
-        logger.debug(f"Requesting Claude analysis for {stock.ticker}")
+        logger.debug(f"Requesting Claude analysis for {stock.ticker} via OpenRouter")
 
-        response = self.client.messages.create(
+        response = self.client.chat.completions.create(
             model=self.settings.model,
             max_tokens=self.settings.max_tokens,
-            system=self.system_prompt,
-            messages=[{"role": "user", "content": prompt}],
+            messages=[
+                {"role": "system", "content": self.system_prompt},
+                {"role": "user", "content": prompt},
+            ],
+            extra_headers={
+                "HTTP-Referer": self.settings.site_url,
+                "X-Title": self.settings.site_name,
+            },
         )
 
-        data = json.loads(response.content[0].text)
+        content = response.choices[0].message.content
+        data = json.loads(_JSON_FENCE.sub("", content.strip()))
         return ClaudeAnalysis(**data)

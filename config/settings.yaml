@@ -21,8 +21,13 @@ change_detection:
   price_delta_pct: 1.0
 
 claude:
-  model: claude-sonnet-5
+  # Routed through OpenRouter's OpenAI-compatible API, not Anthropic's native API.
+  # Verify the exact slug at https://openrouter.ai/models if analysis calls 404.
+  model: anthropic/claude-sonnet-5
   max_tokens: 1024
+  base_url: https://openrouter.ai/api/v1
+  site_url: https://github.com/saranyasounder/finviz-ai-scanner
+  site_name: Finviz AI Scanner
 
 email:
   subject_prefix: "[Finviz AI Scanner]"

@@ -54,6 +54,9 @@ class ClaudeSettings:
     api_key: str
     model: str
     max_tokens: int
+    base_url: str
+    site_url: str
+    site_name: str
 
 
 @dataclass(frozen=True)
@@ -123,9 +126,12 @@ def load_settings(config_dir: Path | None = None) -> Settings:
         ),
         change_detection=ChangeDetectionThresholds(**raw["change_detection"]),
         claude=ClaudeSettings(
-            api_key=os.getenv("ANTHROPIC_API_KEY", ""),
+            api_key=os.getenv("OPENROUTER_API_KEY", ""),
             model=raw["claude"]["model"],
             max_tokens=raw["claude"]["max_tokens"],
+            base_url=raw["claude"]["base_url"],
+            site_url=raw["claude"]["site_url"],
+            site_name=raw["claude"]["site_name"],
         ),
         email=EmailSettings(
             smtp_host=os.getenv("SMTP_HOST", ""),
