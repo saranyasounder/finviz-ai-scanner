@@ -1,14 +1,14 @@
-2026/07/25-14:20:23.941 a404 Reusing MANIFEST C:\Users\rajan\trading_tool\finviz\chrome_profile\Default\IndexedDB\https_elite.finviz.com_0.indexeddb.leveldb/MANIFEST-000001
-2026/07/25-14:20:23.941 a404 Recovering log #70
-2026/07/25-14:20:23.942 a404 Reusing old log C:\Users\rajan\trading_tool\finviz\chrome_profile\Default\IndexedDB\https_elite.finviz.com_0.indexeddb.leveldb/000070.log 
-2026/07/25-14:20:23.942 a404 Delete type=2 #68
-2026/07/25-14:20:23.971 145c Level-0 table #75: started
-2026/07/25-14:20:23.983 145c Level-0 table #75: 650 bytes OK
-2026/07/25-14:20:23.984 145c Delete type=0 #70
-2026/07/25-14:20:23.985 a28c Manual compaction at level-0 from '\x00\x14\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00\x15\x00\x00\x00' @ 0 : 0; will stop at '\x00\x14\x00\x00\x05' @ 401 : 1
-2026/07/25-14:20:23.985 a28c Compacting 1@0 + 1@1 files
-2026/07/25-14:20:23.998 a28c Generated table #76@0: 39 keys, 866 bytes
-2026/07/25-14:20:23.998 a28c Compacted 1@0 + 1@1 files => 866 bytes
-2026/07/25-14:20:23.999 a28c compacted to: files[ 0 1 1 0 0 0 0 ]
-2026/07/25-14:20:23.999 a28c Delete type=2 #75
-2026/07/25-14:20:24.000 a28c Manual compaction at level-0 from '\x00\x14\x00\x00\x05' @ 401 : 1 .. '\x00\x15\x00\x00\x00' @ 0 : 0; will stop at (end)
+2026/07/25-14:44:42.867 22d0 Reusing MANIFEST C:\Users\rajan\trading_tool\finviz\chrome_profile\Default\IndexedDB\https_elite.finviz.com_0.indexeddb.leveldb/MANIFEST-000001
+2026/07/25-14:44:42.868 22d0 Recovering log #86
+2026/07/25-14:44:42.868 22d0 Reusing old log C:\Users\rajan\trading_tool\finviz\chrome_profile\Default\IndexedDB\https_elite.finviz.com_0.indexeddb.leveldb/000086.log 
+2026/07/25-14:44:42.868 22d0 Delete type=2 #84
+2026/07/25-14:44:42.884 22d0 Level-0 table #91: started
+2026/07/25-14:44:42.898 22d0 Level-0 table #91: 644 bytes OK
+2026/07/25-14:44:42.899 22d0 Delete type=0 #86
+2026/07/25-14:44:42.900 89e0 Manual compaction at level-0 from '\x00\x18\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00\x19\x00\x00\x00' @ 0 : 0; will stop at '\x00\x18\x00\x00\x05' @ 477 : 1
+2026/07/25-14:44:42.900 89e0 Compacting 1@0 + 1@1 files
+2026/07/25-14:44:42.915 89e0 Generated table #92@0: 39 keys, 870 bytes
+2026/07/25-14:44:42.915 89e0 Compacted 1@0 + 1@1 files => 870 bytes
+2026/07/25-14:44:42.915 89e0 compacted to: files[ 0 1 1 0 0 0 0 ]
+2026/07/25-14:44:42.916 89e0 Delete type=2 #91
+2026/07/25-14:44:42.916 89e0 Manual compaction at level-0 from '\x00\x18\x00\x00\x05' @ 477 : 1 .. '\x00\x19\x00\x00\x00' @ 0 : 0; will stop at (end)
