@@ -1,21 +1,17 @@
-from loguru import logger
-from dotenv import load_dotenv
-import os
+from __future__ import annotations
 
-load_dotenv()
+from loguru import logger
+from playwright.sync_api import Page
 
 
 class FinvizScreener:
-    def __init__(self, page):
+    """Navigates to a saved Finviz Elite screener view."""
+
+    def __init__(self, page: Page, screener_url: str):
         self.page = page
-        self.screener_url = os.getenv("FINVIZ_SCREENER_URL")
+        self.screener_url = screener_url
 
-        if not self.screener_url:
-            raise ValueError(
-                "FINVIZ_SCREENER_URL is not set in the .env file."
-            )
-
-    def open(self):
+    def open(self) -> None:
         logger.info("Opening Finviz Elite Screener...")
         logger.debug(f"Navigating to: {self.screener_url}")
 

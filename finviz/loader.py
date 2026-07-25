@@ -1,20 +1,25 @@
 from pathlib import Path
+
 import pandas as pd
+
+from loguru import logger
 
 
 class FinvizLoader:
 
-    def __init__(self, csv_path: Path):
-        self.csv_path = Path(csv_path)
+    def __init__(self, csv_file: Path):
 
-    def load(self) -> pd.DataFrame:
+        self.csv_file = Path(csv_file)
 
-        df = pd.read_csv(self.csv_path)
+    def load(self):
 
-        print(df.columns.tolist())
+        logger.info(f"Loading {self.csv_file}")
 
-        print(f"Loaded {len(df)} stocks")
+        df = pd.read_csv(self.csv_file)
 
+        if df.empty:
+            raise ValueError("CSV contains no data.")
 
+        logger.success(f"Loaded {len(df)} stocks.")
 
         return df
