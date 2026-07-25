@@ -87,6 +87,15 @@ class TradingEngine:
         scored = self.scorer.score_all(stocks)
 
         previous = self.snapshot_manager.load_latest()
+
+        if previous is None:
+            logger.info(
+                f"Initial scan - no previous snapshot. Establishing a baseline of "
+                f"{len(scored)} stock(s); skipping Claude analysis and email."
+            )
+            self.snapshot_manager.save(scored)
+            return
+
         events = self.change_detector.detect(scored, previous)
 
         if not events:
