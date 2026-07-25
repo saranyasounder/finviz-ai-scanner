@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Finviz AI Scanner Report - {{ generated_at }}</title>
+<style>
+  body { font-family: -apple-system, Segoe UI, Arial, sans-serif; background: #0b0e14; color: #e6e6e6; margin: 0; padding: 24px; }
+  h1 { font-size: 20px; margin-bottom: 4px; }
+  .timestamp { color: #9aa4b2; font-size: 13px; margin-bottom: 24px; }
+  section { margin-bottom: 32px; }
+  h2 { font-size: 15px; text-transform: uppercase; letter-spacing: 0.04em; color: #9aa4b2; border-bottom: 1px solid #232838; padding-bottom: 6px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #1b2030; }
+  th { color: #9aa4b2; font-weight: 600; }
+  .score { font-weight: 700; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+  .badge-high { background: #163a2b; color: #4ade80; }
+  .badge-medium { background: #3a2f16; color: #facc15; }
+  .badge-low { background: #3a1620; color: #f87171; }
+  .chart-placeholder { height: 120px; border: 1px dashed #2a3040; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: #4a5468; font-size: 12px; }
+  .trade-card { background: #131826; border: 1px solid #232838; border-radius: 8px; padding: 14px 16px; margin-bottom: 12px; }
+  .trade-card h3 { margin: 0 0 6px 0; font-size: 14px; }
+  .trade-card p { margin: 4px 0; font-size: 13px; color: #c7cdd6; }
+  .risk-summary { font-size: 13px; color: #c7cdd6; }
+</style>
+</head>
+<body>
+
+<h1>Finviz AI Trading Intelligence Report</h1>
+<div class="timestamp">Generated {{ generated_at }}</div>
+
+<section>
+  <h2>Market Summary</h2>
+  <p>{{ market_summary }}</p>
+</section>
+
+<section>
+  <h2>New Candidates ({{ new_candidates|length }})</h2>
+  {% if new_candidates %}
+  <table>
+    <tr><th>Ticker</th><th>Score</th><th>Price</th><th>Gap %</th><th>Rel. Vol</th></tr>
+    {% for stock in new_candidates %}
+    <tr>
+      <td>{{ stock.ticker }}</td>
+      <td class="score">{{ "%.1f"|format(stock.score) }}</td>
+      <td>{{ stock.price }}</td>
+      <td>{{ stock.gap }}</td>
+      <td>{{ stock.relative_volume }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}
+  <p>No new candidates this scan.</p>
+  {% endif %}
+</section>
+
+<section>
+  <h2>Updated Candidates ({{ updated_candidates|length }})</h2>
+  {% if updated_candidates %}
+  <table>
+    <tr><th>Ticker</th><th>Score</th><th>Price</th><th>Gap %</th><th>Rel. Vol</th><th>Why it changed</th></tr>
+    {% for stock in updated_candidates %}
+    <tr>
+      <td>{{ stock.ticker }}</td>
+      <td class="score">{{ "%.1f"|format(stock.score) }}</td>
+      <td>{{ stock.price }}</td>
+      <td>{{ stock.gap }}</td>
+      <td>{{ stock.relative_volume }}</td>
+      <td>{{ change_reasons.get(stock.ticker, "") }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}
+  <p>No updated candidates this scan.</p>
+  {% endif %}
+</section>
+
+<section>
+  <h2>Top Ranked Stocks</h2>
+  <table>
+    <tr><th>#</th><th>Ticker</th><th>Company</th><th>Score</th><th>Price</th><th>Sector</th></tr>
+    {% for stock in top_ranked %}
+    <tr>
+      <td>{{ loop.index }}</td>
+      <td>{{ stock.ticker }}</td>
+      <td>{{ stock.company }}</td>
+      <td class="score">{{ "%.1f"|format(stock.score) }}</td>
+      <td>{{ stock.price }}</td>
+      <td>{{ stock.sector }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  <div class="chart-placeholder">[ Score distribution chart placeholder ]</div>
+</section>
+
+<section>
+  <h2>Trade Ideas</h2>
+  {% for stock in analyzed %}
+  <div class="trade-card">
+    <h3>{{ stock.ticker }} - {{ stock.company }}
+      {% if stock.analysis %}
+      <span class="badge {% if stock.analysis.confidence == 'High' %}badge-high{% elif stock.analysis.confidence == 'Medium' %}badge-medium{% else %}badge-low{% endif %}">
+        {{ stock.analysis.confidence }} confidence - Grade {{ stock.analysis.trade_quality }}
+      </span>
+      {% endif %}
+    </h3>
+    {% if stock.analysis %}
+    <p><strong>Why:</strong> {{ stock.analysis.reasoning }}</p>
+    <p><strong>Entry:</strong> {{ stock.analysis.entry }} &nbsp; <strong>Stop:</strong> {{ stock.analysis.stop_loss }} &nbsp; <strong>Target:</strong> {{ stock.analysis.profit_target }}</p>
+    <p><strong>Risk:</strong> {{ stock.analysis.risk }}</p>
+    {% else %}
+    <p>Analysis unavailable for this stock.</p>
+    {% endif %}
+    <div class="chart-placeholder">[ {{ stock.ticker }} price chart placeholder ]</div>
+  </div>
+  {% else %}
+  <p>No trade ideas generated this scan.</p>
+  {% endfor %}
+</section>
+
+<section>
+  <h2>Risk Summary</h2>
+  <p class="risk-summary">{{ risk_summary }}</p>
+</section>
+
+</body>
+</html>
