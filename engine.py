@@ -5,6 +5,8 @@ from loguru import logger
 from analysis.change_detector import ChangeDetector
 from analysis.claude_analyzer import ClaudeAnalyzer
 from analysis.momentum_scorer import MomentumScorer
+from browser.browser import Browser
+from config.settings import Settings
 from finviz.collector import FinvizCollector
 from models.change_event import ChangeType
 from notifications.email_service import EmailService
@@ -35,6 +37,37 @@ class TradingEngine:
         self.claude_analyzer = claude_analyzer
         self.report_generator = report_generator
         self.email_service = email_service
+
+    @classmethod
+    def from_settings(cls, settings: Settings) -> "TradingEngine":
+        """Wires every component from a single Settings object - the composition root."""
+
+        browser = Browser(
+            profile_dir=settings.browser.profile_dir,
+            headless=settings.browser.headless,
+        )
+        collector = FinvizCollector(
+            browser=browser,
+            screener_url=settings.finviz_screener_url,
+            downloads_dir=settings.downloads_dir,
+            download_timeout_ms=settings.browser.download_timeout_ms,
+        )
+
+        return cls(
+            collector=collector,
+            scorer=MomentumScorer(settings.scoring_config_path),
+            snapshot_manager=SnapshotManager(
+                settings.snapshots.directory, settings.snapshots.retention_days
+            ),
+            change_detector=ChangeDetector(
+                settings.change_detection, settings.snapshots.top_n
+            ),
+            claude_analyzer=ClaudeAnalyzer(
+                settings.claude, settings.prompts_config_path
+            ),
+            report_generator=ReportGenerator(settings.snapshots.top_n),
+            email_service=EmailService(settings.email),
+        )
 
     def run(self) -> None:
         with log_execution_time("Trading engine cycle"):
