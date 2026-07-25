@@ -1,0 +1,14 @@
+2026/07/25-14:17:02.707 2428 Reusing MANIFEST C:\Users\rajan\trading_tool\finviz\chrome_profile\Default\IndexedDB\https_elite.finviz.com_0.indexeddb.leveldb/MANIFEST-000001
+2026/07/25-14:17:02.707 2428 Recovering log #66
+2026/07/25-14:17:02.708 2428 Reusing old log C:\Users\rajan\trading_tool\finviz\chrome_profile\Default\IndexedDB\https_elite.finviz.com_0.indexeddb.leveldb/000066.log 
+2026/07/25-14:17:02.708 2428 Delete type=2 #64
+2026/07/25-14:17:02.735 6638 Level-0 table #71: started
+2026/07/25-14:17:02.749 6638 Level-0 table #71: 644 bytes OK
+2026/07/25-14:17:02.750 6638 Delete type=0 #66
+2026/07/25-14:17:02.751 2428 Manual compaction at level-0 from '\x00\x13\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00\x14\x00\x00\x00' @ 0 : 0; will stop at '\x00\x13\x00\x00\x05' @ 382 : 1
+2026/07/25-14:17:02.751 2428 Compacting 1@0 + 1@1 files
+2026/07/25-14:17:02.766 2428 Generated table #72@0: 39 keys, 867 bytes
+2026/07/25-14:17:02.766 2428 Compacted 1@0 + 1@1 files => 867 bytes
+2026/07/25-14:17:02.767 2428 compacted to: files[ 0 1 1 0 0 0 0 ]
+2026/07/25-14:17:02.768 2428 Delete type=2 #71
+2026/07/25-14:17:02.769 2428 Manual compaction at level-0 from '\x00\x13\x00\x00\x05' @ 382 : 1 .. '\x00\x14\x00\x00\x00' @ 0 : 0; will stop at (end)
