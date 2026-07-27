@@ -56,7 +56,9 @@ def test_bearish_headline_with_price_up_is_conflicting():
 
 def test_no_keywords_is_inconclusive():
     validator = NewsValidator()
-    stock = _stock(change=3.0, headlines=["Company Announces Annual Shareholder Meeting Date"])
+    stock = _stock(
+        change=3.0, headlines=["Company Announces Annual Shareholder Meeting Date"]
+    )
 
     results = validator.validate(stock)
 

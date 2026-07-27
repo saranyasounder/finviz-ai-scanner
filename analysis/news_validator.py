@@ -4,15 +4,52 @@ from models.news_validation import NewsValidation, NewsVerdict
 from models.stock_candidate import StockCandidate
 
 _BULLISH_KEYWORDS = {
-    "beats", "beat", "surge", "surges", "soar", "soars", "upgrade", "upgraded",
-    "raises", "raised", "record", "breakout", "rally", "rallies", "outperform",
-    "strong", "jump", "jumps", "gains", "wins", "approval", "approved",
+    "beats",
+    "beat",
+    "surge",
+    "surges",
+    "soar",
+    "soars",
+    "upgrade",
+    "upgraded",
+    "raises",
+    "raised",
+    "record",
+    "breakout",
+    "rally",
+    "rallies",
+    "outperform",
+    "strong",
+    "jump",
+    "jumps",
+    "gains",
+    "wins",
+    "approval",
+    "approved",
 }
 
 _BEARISH_KEYWORDS = {
-    "misses", "miss", "downgrade", "downgraded", "cuts", "cut", "plunge",
-    "plunges", "lawsuit", "recall", "warns", "warning", "delay", "delayed",
-    "weak", "sell-off", "selloff", "falls", "drops", "investigation", "probe",
+    "misses",
+    "miss",
+    "downgrade",
+    "downgraded",
+    "cuts",
+    "cut",
+    "plunge",
+    "plunges",
+    "lawsuit",
+    "recall",
+    "warns",
+    "warning",
+    "delay",
+    "delayed",
+    "weak",
+    "sell-off",
+    "selloff",
+    "falls",
+    "drops",
+    "investigation",
+    "probe",
 }
 
 _CHANGE_EPSILON_PCT = 0.5
@@ -23,7 +60,9 @@ class NewsValidator:
     price move, producing one NewsValidation per NewsItem (same order)."""
 
     def validate(self, stock: StockCandidate) -> list[NewsValidation]:
-        return [self._validate_one(item.headline, stock.change) for item in stock.news_items]
+        return [
+            self._validate_one(item.headline, stock.change) for item in stock.news_items
+        ]
 
     def _validate_one(self, headline: str, change_pct: float) -> NewsValidation:
         words = set(headline.lower().replace("-", " ").split())

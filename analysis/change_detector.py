@@ -12,7 +12,8 @@ from models.stock_candidate import StockCandidate
 
 class ChangeDetector:
     """Detects only meaningful changes between two scans - new tickers, threshold-crossing
-    moves in score/relative volume/gap/price, and Top-N entries/exits. Everything else is ignored."""
+    moves in score/relative volume/gap/price, and Top-N entries/exits. Everything else is ignored.
+    """
 
     def __init__(self, thresholds: ChangeDetectionThresholds, top_n: int):
         self.thresholds = thresholds

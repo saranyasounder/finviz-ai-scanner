@@ -67,9 +67,14 @@ def _make_engine(previous=None, events=None):
 
 
 def test_initial_scan_analyzes_top_n_and_emails_but_skips_change_detection():
-    engine, snapshot_manager, change_detector, enrichment_service, claude_analyzer, email_service = (
-        _make_engine(previous=None)
-    )
+    (
+        engine,
+        snapshot_manager,
+        change_detector,
+        enrichment_service,
+        claude_analyzer,
+        email_service,
+    ) = _make_engine(previous=None)
 
     engine.run()
 
@@ -81,9 +86,14 @@ def test_initial_scan_analyzes_top_n_and_emails_but_skips_change_detection():
 
 
 def test_no_changes_skips_enrichment_claude_and_email():
-    engine, snapshot_manager, change_detector, enrichment_service, claude_analyzer, email_service = (
-        _make_engine(previous=[_stock()], events=[])
-    )
+    (
+        engine,
+        snapshot_manager,
+        change_detector,
+        enrichment_service,
+        claude_analyzer,
+        email_service,
+    ) = _make_engine(previous=[_stock()], events=[])
 
     engine.run()
 
@@ -102,9 +112,14 @@ def test_changes_trigger_enrichment_claude_and_email():
         timestamp=datetime.now(),
         description="AAA score changed.",
     )
-    engine, snapshot_manager, change_detector, enrichment_service, claude_analyzer, email_service = (
-        _make_engine(previous=[_stock()], events=[event])
-    )
+    (
+        engine,
+        snapshot_manager,
+        change_detector,
+        enrichment_service,
+        claude_analyzer,
+        email_service,
+    ) = _make_engine(previous=[_stock()], events=[event])
 
     engine.run()
 
@@ -115,9 +130,14 @@ def test_changes_trigger_enrichment_claude_and_email():
 
 
 def test_enrichment_failure_still_allows_claude_and_email():
-    engine, snapshot_manager, change_detector, enrichment_service, claude_analyzer, email_service = (
-        _make_engine(previous=None)
-    )
+    (
+        engine,
+        snapshot_manager,
+        change_detector,
+        enrichment_service,
+        claude_analyzer,
+        email_service,
+    ) = _make_engine(previous=None)
     enrichment_service.enrich.side_effect = RuntimeError("browser crashed")
 
     engine.run()

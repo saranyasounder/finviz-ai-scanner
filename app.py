@@ -23,7 +23,9 @@ def run_once() -> None:
     settings = load_settings()
     configure_logging(settings.logging)
 
-    guard = MarketHoursGuard(settings.market_hours, settings.market_holidays_config_path)
+    guard = MarketHoursGuard(
+        settings.market_hours, settings.market_holidays_config_path
+    )
 
     if not guard.is_market_open():
         logger.info("MARKET CLOSED - skipping this run (no-op).")

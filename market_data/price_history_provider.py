@@ -52,7 +52,9 @@ class PriceHistoryProvider:
 
         for ticker in tickers:
             try:
-                ticker_df = data[ticker] if isinstance(data.columns, pd.MultiIndex) else data
+                ticker_df = (
+                    data[ticker] if isinstance(data.columns, pd.MultiIndex) else data
+                )
                 if ticker_df.empty:
                     raise PriceHistoryError(f"No price history returned for {ticker}")
                 results[ticker] = self._bars_from_dataframe(ticker_df)

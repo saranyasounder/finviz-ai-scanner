@@ -190,7 +190,8 @@ class TradingEngine:
     @staticmethod
     def _select_changed(scored, events):
         """Stocks worth sending to Claude: everything except tickers whose only
-        change was leaving the Top N (they don't need a fresh 'why it ranks' write-up)."""
+        change was leaving the Top N (they don't need a fresh 'why it ranks' write-up).
+        """
 
         by_ticker = {s.ticker: s for s in scored}
 

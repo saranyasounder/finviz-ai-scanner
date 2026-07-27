@@ -73,7 +73,9 @@ def test_news_section_truncates_to_prompt_headline_count():
     analyzer = _analyzer()
     items = [NewsItem(headline=f"Headline {i}") for i in range(5)]
     validations = [
-        NewsValidation(headline=f"Headline {i}", verdict=NewsVerdict.INCONCLUSIVE, note="n/a")
+        NewsValidation(
+            headline=f"Headline {i}", verdict=NewsVerdict.INCONCLUSIVE, note="n/a"
+        )
         for i in range(5)
     ]
     stock = _stock(news_items=items, news_validations=validations)
@@ -86,7 +88,9 @@ def test_news_section_truncates_to_prompt_headline_count():
 def test_fibonacci_section_reports_no_data_when_absent():
     stock = _stock()
 
-    assert ClaudeAnalyzer._build_fibonacci_section(stock) == "No Fibonacci data available."
+    assert (
+        ClaudeAnalyzer._build_fibonacci_section(stock) == "No Fibonacci data available."
+    )
 
 
 def test_fibonacci_section_includes_trend_and_levels():

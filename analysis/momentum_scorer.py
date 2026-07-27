@@ -43,7 +43,9 @@ class MomentumScorer:
 
             evaluator = _RULE_EVALUATORS.get(rule["type"])
             if evaluator is None:
-                logger.warning(f"Unknown scoring rule type '{rule['type']}' for '{rule_name}', skipping.")
+                logger.warning(
+                    f"Unknown scoring rule type '{rule['type']}' for '{rule_name}', skipping."
+                )
                 continue
 
             points = evaluator(value, rule)

@@ -39,9 +39,7 @@ def test_successful_send_returns_true_and_uses_configured_timeout():
         result = service.send(subject="Alert", html_body="<p>hi</p>")
 
     assert result is True
-    smtp_cls.assert_called_once_with(
-        "smtp.example.invalid", 587, timeout=15
-    )
+    smtp_cls.assert_called_once_with("smtp.example.invalid", 587, timeout=15)
     mock_server.starttls.assert_called_once()
     mock_server.login.assert_called_once_with("user@example.invalid", "password")
     mock_server.sendmail.assert_called_once()

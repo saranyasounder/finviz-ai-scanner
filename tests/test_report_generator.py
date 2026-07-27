@@ -21,7 +21,9 @@ def _stock(ticker: str, score: float, beta=None, short_float=None) -> StockCandi
     )
 
 
-def _event(ticker: str, change_type: ChangeType, description: str = "changed") -> ChangeEvent:
+def _event(
+    ticker: str, change_type: ChangeType, description: str = "changed"
+) -> ChangeEvent:
     return ChangeEvent(
         ticker=ticker,
         change_type=change_type,
@@ -91,5 +93,8 @@ def test_risk_summary_counts_high_beta_and_short_float():
 
     html = generator.generate(current=stocks, events=[], analyzed=[])
 
-    assert "1 candidate(s) with beta &gt; 1.5" in html or "1 candidate(s) with beta > 1.5" in html
+    assert (
+        "1 candidate(s) with beta &gt; 1.5" in html
+        or "1 candidate(s) with beta > 1.5" in html
+    )
     assert "1 candidate(s) with short float" in html

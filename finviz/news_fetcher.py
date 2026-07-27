@@ -50,7 +50,9 @@ class FinvizNewsFetcher:
         try:
             self.page.wait_for_selector(_NEWS_ROW_SELECTOR, timeout=10000)
         except Exception as exc:
-            raise NewsFetchError(f"News table did not load for {ticker}: {exc}") from exc
+            raise NewsFetchError(
+                f"News table did not load for {ticker}: {exc}"
+            ) from exc
 
         rows = self.page.query_selector_all(_NEWS_ROW_SELECTOR)
         items: list[NewsItem] = []

@@ -116,9 +116,7 @@ def load_settings(config_dir: Path | None = None) -> Settings:
 
     screener_url = os.getenv("FINVIZ_SCREENER_URL")
     if not screener_url:
-        raise RuntimeError(
-            "FINVIZ_SCREENER_URL is not set in the environment (.env)."
-        )
+        raise RuntimeError("FINVIZ_SCREENER_URL is not set in the environment (.env).")
 
     to_addrs_raw = os.getenv("EMAIL_TO", "")
     to_addrs = [addr.strip() for addr in to_addrs_raw.split(",") if addr.strip()]
