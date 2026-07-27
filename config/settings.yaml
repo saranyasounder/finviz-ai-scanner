@@ -30,14 +30,17 @@ claude:
   base_url: https://openrouter.ai/api/v1
   site_url: https://github.com/saranyasounder/finviz-ai-scanner
   site_name: Finviz AI Scanner
+  request_timeout_seconds: 30
 
 enrichment:
   fibonacci_lookback_days: 90
   news_max_headlines: 5
   prompt_headline_count: 3
+  news_fetch_delay_seconds: 1.5
 
 email:
   subject_prefix: "[Finviz AI Scanner]"
+  smtp_timeout_seconds: 15
 
 logging:
   directory: logs

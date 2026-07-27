@@ -34,6 +34,7 @@ class ClaudeAnalyzer:
         self.client = OpenAI(
             base_url=claude_settings.base_url,
             api_key=claude_settings.api_key,
+            timeout=claude_settings.request_timeout_seconds,
         )
 
         with prompts_path.open("r", encoding="utf-8") as f:

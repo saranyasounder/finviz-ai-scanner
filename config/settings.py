@@ -59,6 +59,7 @@ class ClaudeSettings:
     base_url: str
     site_url: str
     site_name: str
+    request_timeout_seconds: float
 
 
 @dataclass(frozen=True)
@@ -66,6 +67,7 @@ class EnrichmentSettings:
     fibonacci_lookback_days: int
     news_max_headlines: int
     prompt_headline_count: int
+    news_fetch_delay_seconds: float
 
 
 @dataclass(frozen=True)
@@ -77,6 +79,7 @@ class EmailSettings:
     from_addr: str
     to_addrs: list[str]
     subject_prefix: str
+    smtp_timeout_seconds: float
 
 
 @dataclass(frozen=True)
@@ -143,6 +146,7 @@ def load_settings(config_dir: Path | None = None) -> Settings:
             base_url=raw["claude"]["base_url"],
             site_url=raw["claude"]["site_url"],
             site_name=raw["claude"]["site_name"],
+            request_timeout_seconds=raw["claude"]["request_timeout_seconds"],
         ),
         enrichment=EnrichmentSettings(**raw["enrichment"]),
         email=EmailSettings(
@@ -153,6 +157,7 @@ def load_settings(config_dir: Path | None = None) -> Settings:
             from_addr=os.getenv("EMAIL_FROM", ""),
             to_addrs=to_addrs,
             subject_prefix=raw["email"]["subject_prefix"],
+            smtp_timeout_seconds=raw["email"]["smtp_timeout_seconds"],
         ),
         logging=LoggingSettings(
             directory=BASE_DIR / raw["logging"]["directory"],

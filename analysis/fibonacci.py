@@ -2,13 +2,10 @@ from __future__ import annotations
 
 from models.fibonacci_levels import FibonacciLevels, TrendDirection
 from models.price_bar import PriceBar
+from utils.exceptions import FibonacciAnalysisError
 
 _RETRACEMENT_RATIOS = (0.236, 0.382, 0.5, 0.618, 0.786)
 _TREND_EPSILON = 0.02  # 2% move between oldest and newest close counts as a trend
-
-
-class FibonacciAnalysisError(Exception):
-    """Raised when there isn't enough price history to compute Fibonacci levels."""
 
 
 class FibonacciAnalyzer:

@@ -28,7 +28,11 @@ class EmailService:
         message.attach(MIMEText(html_body, "html"))
 
         try:
-            with smtplib.SMTP(self.settings.smtp_host, self.settings.smtp_port) as server:
+            with smtplib.SMTP(
+                self.settings.smtp_host,
+                self.settings.smtp_port,
+                timeout=self.settings.smtp_timeout_seconds,
+            ) as server:
                 server.starttls()
                 server.login(self.settings.smtp_username, self.settings.smtp_password)
                 server.sendmail(

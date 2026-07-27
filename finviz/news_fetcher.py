@@ -1,18 +1,16 @@
 from __future__ import annotations
 
+import time
 from datetime import datetime
 
 from loguru import logger
 from playwright.sync_api import Page
 
 from models.news_item import NewsItem
+from utils.exceptions import NewsFetchError
 
 _QUOTE_URL = "https://finviz.com/quote.ashx?t={ticker}"
 _NEWS_ROW_SELECTOR = "#news-table tr"
-
-
-class NewsFetchError(Exception):
-    """Raised when a single ticker's news table can't be fetched or parsed."""
 
 
 class FinvizNewsFetcher:
@@ -22,11 +20,21 @@ class FinvizNewsFetcher:
         self.page = page
 
     def fetch_many(
-        self, tickers: list[str], max_headlines: int
+        self,
+        tickers: list[str],
+        max_headlines: int,
+        delay_seconds: float = 0.0,
     ) -> dict[str, list[NewsItem]]:
+        """Fetches news for each ticker sequentially on the one injected Page,
+        pausing delay_seconds between requests so a batch of tickers doesn't
+        hammer finviz.com with back-to-back page loads."""
+
         results: dict[str, list[NewsItem]] = {}
 
-        for ticker in tickers:
+        for i, ticker in enumerate(tickers):
+            if i > 0 and delay_seconds > 0:
+                time.sleep(delay_seconds)
+
             try:
                 results[ticker] = self._fetch_one(ticker, max_headlines)
             except NewsFetchError as exc:

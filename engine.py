@@ -68,6 +68,7 @@ class TradingEngine:
             news_validator=NewsValidator(),
             fibonacci_lookback_days=settings.enrichment.fibonacci_lookback_days,
             news_max_headlines=settings.enrichment.news_max_headlines,
+            news_fetch_delay_seconds=settings.enrichment.news_fetch_delay_seconds,
         )
 
         return cls(
@@ -93,6 +94,13 @@ class TradingEngine:
     def run(self) -> None:
         with log_execution_time("Trading engine cycle"):
             self._run()
+            self._cleanup_old_snapshots()
+
+    def _cleanup_old_snapshots(self) -> None:
+        try:
+            self.snapshot_manager.cleanup_old()
+        except Exception as exc:
+            logger.error(f"Snapshot cleanup failed: {exc}")
 
     def _run(self) -> None:
         try:
