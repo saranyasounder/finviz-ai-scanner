@@ -4,10 +4,14 @@ from loguru import logger
 
 from analysis.change_detector import ChangeDetector
 from analysis.claude_analyzer import ClaudeAnalyzer
+from analysis.enrichment_service import EnrichmentService
+from analysis.fibonacci import FibonacciAnalyzer
 from analysis.momentum_scorer import MomentumScorer
+from analysis.news_validator import NewsValidator
 from browser.browser import Browser
 from config.settings import Settings
 from finviz.collector import FinvizCollector
+from market_data.price_history_provider import PriceHistoryProvider
 from models.change_event import ChangeType
 from notifications.email_service import EmailService
 from reports.report_generator import ReportGenerator
@@ -26,6 +30,7 @@ class TradingEngine:
         scorer: MomentumScorer,
         snapshot_manager: SnapshotManager,
         change_detector: ChangeDetector,
+        enrichment_service: EnrichmentService,
         claude_analyzer: ClaudeAnalyzer,
         report_generator: ReportGenerator,
         email_service: EmailService,
@@ -35,6 +40,7 @@ class TradingEngine:
         self.scorer = scorer
         self.snapshot_manager = snapshot_manager
         self.change_detector = change_detector
+        self.enrichment_service = enrichment_service
         self.claude_analyzer = claude_analyzer
         self.report_generator = report_generator
         self.email_service = email_service
@@ -55,6 +61,15 @@ class TradingEngine:
             download_timeout_ms=settings.browser.download_timeout_ms,
         )
 
+        enrichment_service = EnrichmentService(
+            browser=browser,
+            price_history_provider=PriceHistoryProvider(),
+            fibonacci_analyzer=FibonacciAnalyzer(),
+            news_validator=NewsValidator(),
+            fibonacci_lookback_days=settings.enrichment.fibonacci_lookback_days,
+            news_max_headlines=settings.enrichment.news_max_headlines,
+        )
+
         return cls(
             collector=collector,
             scorer=MomentumScorer(settings.scoring_config_path),
@@ -64,8 +79,11 @@ class TradingEngine:
             change_detector=ChangeDetector(
                 settings.change_detection, settings.snapshots.top_n
             ),
+            enrichment_service=enrichment_service,
             claude_analyzer=ClaudeAnalyzer(
-                settings.claude, settings.prompts_config_path
+                settings.claude,
+                settings.prompts_config_path,
+                settings.enrichment.prompt_headline_count,
             ),
             report_generator=ReportGenerator(settings.snapshots.top_n),
             email_service=EmailService(settings.email),
@@ -138,6 +156,11 @@ class TradingEngine:
         change_reasons,
         subject: str,
     ) -> None:
+        try:
+            candidates = self.enrichment_service.enrich(candidates)
+        except Exception as exc:
+            logger.error(f"Enrichment step failed, continuing without it: {exc}")
+
         try:
             analyzed = self.claude_analyzer.analyze(candidates, change_reasons)
         except Exception as exc:

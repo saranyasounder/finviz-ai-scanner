@@ -33,6 +33,9 @@ def _make_engine(previous=None, events=None):
     change_detector = MagicMock()
     change_detector.detect.return_value = events or []
 
+    enrichment_service = MagicMock()
+    enrichment_service.enrich.side_effect = lambda candidates: candidates
+
     claude_analyzer = MagicMock()
     claude_analyzer.analyze.return_value = []
 
@@ -46,41 +49,51 @@ def _make_engine(previous=None, events=None):
         scorer=scorer,
         snapshot_manager=snapshot_manager,
         change_detector=change_detector,
+        enrichment_service=enrichment_service,
         claude_analyzer=claude_analyzer,
         report_generator=report_generator,
         email_service=email_service,
         top_n=10,
     )
 
-    return engine, snapshot_manager, change_detector, claude_analyzer, email_service
+    return (
+        engine,
+        snapshot_manager,
+        change_detector,
+        enrichment_service,
+        claude_analyzer,
+        email_service,
+    )
 
 
 def test_initial_scan_analyzes_top_n_and_emails_but_skips_change_detection():
-    engine, snapshot_manager, change_detector, claude_analyzer, email_service = (
+    engine, snapshot_manager, change_detector, enrichment_service, claude_analyzer, email_service = (
         _make_engine(previous=None)
     )
 
     engine.run()
 
     change_detector.detect.assert_not_called()
+    enrichment_service.enrich.assert_called_once()
     claude_analyzer.analyze.assert_called_once()
     email_service.send.assert_called_once()
     snapshot_manager.save.assert_called_once()
 
 
-def test_no_changes_skips_claude_and_email():
-    engine, snapshot_manager, change_detector, claude_analyzer, email_service = (
+def test_no_changes_skips_enrichment_claude_and_email():
+    engine, snapshot_manager, change_detector, enrichment_service, claude_analyzer, email_service = (
         _make_engine(previous=[_stock()], events=[])
     )
 
     engine.run()
 
+    enrichment_service.enrich.assert_not_called()
     claude_analyzer.analyze.assert_not_called()
     email_service.send.assert_not_called()
     snapshot_manager.save.assert_called_once()
 
 
-def test_changes_trigger_claude_and_email():
+def test_changes_trigger_enrichment_claude_and_email():
     event = ChangeEvent(
         ticker="AAA",
         change_type=ChangeType.SCORE_CHANGE,
@@ -89,9 +102,23 @@ def test_changes_trigger_claude_and_email():
         timestamp=datetime.now(),
         description="AAA score changed.",
     )
-    engine, snapshot_manager, change_detector, claude_analyzer, email_service = (
+    engine, snapshot_manager, change_detector, enrichment_service, claude_analyzer, email_service = (
         _make_engine(previous=[_stock()], events=[event])
     )
+
+    engine.run()
+
+    enrichment_service.enrich.assert_called_once()
+    claude_analyzer.analyze.assert_called_once()
+    email_service.send.assert_called_once()
+    snapshot_manager.save.assert_called_once()
+
+
+def test_enrichment_failure_still_allows_claude_and_email():
+    engine, snapshot_manager, change_detector, enrichment_service, claude_analyzer, email_service = (
+        _make_engine(previous=None)
+    )
+    enrichment_service.enrich.side_effect = RuntimeError("browser crashed")
 
     engine.run()
 

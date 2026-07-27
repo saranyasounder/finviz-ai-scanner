@@ -23,8 +23,14 @@ class ClaudeAnalyzer:
     Routed through OpenRouter's OpenAI-compatible API rather than Anthropic's
     native API, since that's the key/provider configured for this project."""
 
-    def __init__(self, claude_settings: ClaudeSettings, prompts_path: Path):
+    def __init__(
+        self,
+        claude_settings: ClaudeSettings,
+        prompts_path: Path,
+        prompt_headline_count: int = 3,
+    ):
         self.settings = claude_settings
+        self.prompt_headline_count = prompt_headline_count
         self.client = OpenAI(
             base_url=claude_settings.base_url,
             api_key=claude_settings.api_key,
@@ -66,6 +72,8 @@ class ClaudeAnalyzer:
             score=stock.score,
             score_breakdown=stock.score_breakdown,
             change_reason=change_reason,
+            news_section=self._build_news_section(stock),
+            fibonacci_section=self._build_fibonacci_section(stock),
         )
 
         logger.debug(f"Requesting Claude analysis for {stock.ticker} via OpenRouter")
@@ -86,3 +94,30 @@ class ClaudeAnalyzer:
         content = response.choices[0].message.content
         data = json.loads(_JSON_FENCE.sub("", content.strip()))
         return ClaudeAnalysis(**data)
+
+    def _build_news_section(self, stock: StockCandidate) -> str:
+        if not stock.news_items:
+            return "No recent news available."
+
+        pairs = list(zip(stock.news_items, stock.news_validations))[
+            : self.prompt_headline_count
+        ]
+
+        lines = [
+            f'- "{item.headline}" ({item.source or "unknown source"}) - '
+            f"{validation.verdict.value.upper()}: {validation.note}"
+            for item, validation in pairs
+        ]
+        return "\n  ".join(lines)
+
+    @staticmethod
+    def _build_fibonacci_section(stock: StockCandidate) -> str:
+        fib = stock.fibonacci
+        if fib is None:
+            return "No Fibonacci data available."
+
+        return (
+            f"Trend: {fib.trend.value}. Swing High: {fib.swing_high:.2f}, "
+            f"Swing Low: {fib.swing_low:.2f}. Nearest Support: {fib.nearest_support}, "
+            f"Nearest Resistance: {fib.nearest_resistance}."
+        )
