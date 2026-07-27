@@ -5,6 +5,9 @@ from typing import Optional
 from pydantic import BaseModel
 
 from models.claude_analysis import ClaudeAnalysis
+from models.fibonacci_levels import FibonacciLevels
+from models.news_item import NewsItem
+from models.news_validation import NewsValidation
 
 
 class StockCandidate(BaseModel):
@@ -47,3 +50,7 @@ class StockCandidate(BaseModel):
     score_breakdown: dict[str, float] = {}
 
     analysis: Optional[ClaudeAnalysis] = None
+
+    news_items: list[NewsItem] = []
+    news_validations: list[NewsValidation] = []
+    fibonacci: Optional[FibonacciLevels] = None

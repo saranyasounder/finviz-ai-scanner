@@ -60,6 +60,13 @@ class ClaudeSettings:
 
 
 @dataclass(frozen=True)
+class EnrichmentSettings:
+    fibonacci_lookback_days: int
+    news_max_headlines: int
+    prompt_headline_count: int
+
+
+@dataclass(frozen=True)
 class EmailSettings:
     smtp_host: str
     smtp_port: int
@@ -88,6 +95,7 @@ class Settings:
     snapshots: SnapshotSettings
     change_detection: ChangeDetectionThresholds
     claude: ClaudeSettings
+    enrichment: EnrichmentSettings
     email: EmailSettings
     logging: LoggingSettings
     scoring_config_path: Path
@@ -133,6 +141,7 @@ def load_settings(config_dir: Path | None = None) -> Settings:
             site_url=raw["claude"]["site_url"],
             site_name=raw["claude"]["site_name"],
         ),
+        enrichment=EnrichmentSettings(**raw["enrichment"]),
         email=EmailSettings(
             smtp_host=os.getenv("SMTP_HOST", ""),
             smtp_port=int(os.getenv("SMTP_PORT", "587")),
