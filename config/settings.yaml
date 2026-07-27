@@ -4,9 +4,11 @@ browser:
   download_timeout_ms: 15000
 
 market_hours:
-  timezone: America/Los_Angeles
-  start_hour: 6
-  end_hour: 13
+  timezone: America/New_York
+  start_hour: 9
+  start_minute: 30
+  end_hour: 16
+  end_minute: 0
   days: mon-fri
 
 snapshots:
@@ -39,6 +41,6 @@ email:
 
 logging:
   directory: logs
-  rotation: "10 MB"
+  rotation: "00:00"
   retention: "14 days"
   level: INFO

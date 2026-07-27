@@ -30,7 +30,9 @@ class BrowserSettings:
 class MarketHours:
     timezone: str
     start_hour: int
+    start_minute: int
     end_hour: int
+    end_minute: int
     days: str
 
 
@@ -100,6 +102,7 @@ class Settings:
     logging: LoggingSettings
     scoring_config_path: Path
     prompts_config_path: Path
+    market_holidays_config_path: Path
 
 
 def load_settings(config_dir: Path | None = None) -> Settings:
@@ -159,4 +162,5 @@ def load_settings(config_dir: Path | None = None) -> Settings:
         ),
         scoring_config_path=config_dir / "scoring.yaml",
         prompts_config_path=config_dir / "prompts.yaml",
+        market_holidays_config_path=config_dir / "market_holidays.yaml",
     )

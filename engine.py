@@ -22,7 +22,7 @@ from utils.timing import log_execution_time
 class TradingEngine:
     """Orchestrates one full scan cycle: collect, score, detect changes,
     analyze changed stocks with Claude, report, email, and persist the snapshot.
-    Contains all business logic - scheduler.py only decides *when* to call run()."""
+    Contains all business logic - runner.py only decides *when* to call run()."""
 
     def __init__(
         self,

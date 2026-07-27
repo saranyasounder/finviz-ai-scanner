@@ -1,0 +1,18 @@
+# NYSE full-day market holidays. Update yearly - verify against the official
+# NYSE holiday calendar (https://www.nyse.com/markets/hours-calendars).
+# Dates are unquoted ISO (YYYY-MM-DD) so PyYAML parses them as date objects.
+#
+# Note: this list does not include early-close (half) days (e.g. the day
+# after Thanksgiving, sometimes Christmas Eve) - only full closures.
+
+holidays:
+  - 2026-01-01  # New Year's Day
+  - 2026-01-19  # Martin Luther King Jr. Day
+  - 2026-02-16  # Washington's Birthday (Presidents Day)
+  - 2026-04-03  # Good Friday
+  - 2026-05-25  # Memorial Day
+  - 2026-06-19  # Juneteenth
+  - 2026-07-03  # Independence Day (observed, July 4 falls on a Saturday)
+  - 2026-09-07  # Labor Day
+  - 2026-11-26  # Thanksgiving Day
+  - 2026-12-25  # Christmas Day
