@@ -22,6 +22,8 @@
   .trade-card h3 { margin: 0 0 6px 0; font-size: 14px; }
   .trade-card p { margin: 4px 0; font-size: 13px; color: #c7cdd6; }
   .risk-summary { font-size: 13px; color: #c7cdd6; }
+  .news-list { margin-top: 8px; }
+  .news-row { font-size: 12px; color: #9aa4b2; margin: 4px 0; }
 </style>
 </head>
 <body>
@@ -110,6 +112,26 @@
     <p><strong>Risk:</strong> {{ stock.analysis.risk }}</p>
     {% else %}
     <p>Analysis unavailable for this stock.</p>
+    {% endif %}
+    {% if stock.fibonacci %}
+    <p><strong>Entry Zone (Fibonacci):</strong>
+      Swing High {{ "%.2f"|format(stock.fibonacci.swing_high) }} /
+      Swing Low {{ "%.2f"|format(stock.fibonacci.swing_low) }} /
+      Nearest Support {{ "%.2f"|format(stock.fibonacci.nearest_support) if stock.fibonacci.nearest_support is not none else "n/a" }}
+      ({{ stock.fibonacci.trend.value }})
+    </p>
+    {% endif %}
+    {% if stock.news_items %}
+    <div class="news-list">
+      {% for item, validation in zip(stock.news_items, stock.news_validations) %}
+      <p class="news-row">
+        <span class="badge {% if validation.verdict.value == 'corroborated' %}badge-high{% elif validation.verdict.value == 'conflicting' %}badge-low{% else %}badge-medium{% endif %}">
+          {{ validation.verdict.value }}
+        </span>
+        "{{ item.headline }}"{% if item.source %} ({{ item.source }}){% endif %}
+      </p>
+      {% endfor %}
+    </div>
     {% endif %}
     <div class="chart-placeholder">[ {{ stock.ticker }} price chart placeholder ]</div>
   </div>

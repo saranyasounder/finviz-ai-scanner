@@ -20,6 +20,7 @@ class ReportGenerator:
             loader=FileSystemLoader(str(TEMPLATE_DIR)),
             autoescape=select_autoescape(["html", "jinja"]),
         )
+        self._env.globals["zip"] = zip
 
     def generate(
         self,
