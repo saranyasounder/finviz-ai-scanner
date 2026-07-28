@@ -2,13 +2,15 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Finviz AI Scanner Report - {{ generated_at }}</title>
 <style>
-  body { font-family: -apple-system, Segoe UI, Arial, sans-serif; background: #0b0e14; color: #e6e6e6; margin: 0; padding: 24px; }
+  body { font-family: -apple-system, Segoe UI, Arial, sans-serif; background: #0b0e14; color: #e6e6e6; margin: 0; padding: 24px; max-width: 640px; }
   h1 { font-size: 20px; margin-bottom: 4px; }
   .timestamp { color: #9aa4b2; font-size: 13px; margin-bottom: 24px; }
   section { margin-bottom: 32px; }
   h2 { font-size: 15px; text-transform: uppercase; letter-spacing: 0.04em; color: #9aa4b2; border-bottom: 1px solid #232838; padding-bottom: 6px; }
+  h2.section-lead { color: #4ade80; }
   table { width: 100%; border-collapse: collapse; font-size: 13px; }
   th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #1b2030; }
   th { color: #9aa4b2; font-weight: 600; }
@@ -17,13 +19,21 @@
   .badge-high { background: #163a2b; color: #4ade80; }
   .badge-medium { background: #3a2f16; color: #facc15; }
   .badge-low { background: #3a1620; color: #f87171; }
-  .chart-placeholder { height: 120px; border: 1px dashed #2a3040; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: #4a5468; font-size: 12px; }
   .trade-card { background: #131826; border: 1px solid #232838; border-radius: 8px; padding: 14px 16px; margin-bottom: 12px; }
   .trade-card h3 { margin: 0 0 6px 0; font-size: 14px; }
   .trade-card p { margin: 4px 0; font-size: 13px; color: #c7cdd6; }
   .risk-summary { font-size: 13px; color: #c7cdd6; }
   .news-list { margin-top: 8px; }
   .news-row { font-size: 12px; color: #9aa4b2; margin: 4px 0; }
+
+  /* Must-Watch: single-column, large text, minimal fields - built to be
+     skimmed on a phone in under 30 seconds. */
+  .must-watch-card { background: #131826; border: 1px solid #234a2f; border-left: 4px solid #4ade80; border-radius: 8px; padding: 16px; margin-bottom: 14px; }
+  .mw-top { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+  .mw-ticker { font-size: 22px; font-weight: 700; }
+  .mw-price { font-size: 18px; color: #c7cdd6; }
+  .mw-line { font-size: 14px; color: #c7cdd6; margin: 4px 0; }
+  .mw-reason { font-size: 14px; color: #e6e6e6; margin-top: 8px; }
 </style>
 </head>
 <body>
@@ -34,6 +44,27 @@
 <section>
   <h2>Market Summary</h2>
   <p>{{ market_summary }}</p>
+</section>
+
+<section>
+  <h2 class="section-lead">Must-Watch Now</h2>
+  {% for stock in must_watch %}
+  <div class="must-watch-card">
+    <div class="mw-top">
+      <span class="mw-ticker">{{ stock.ticker }}</span>
+      <span class="mw-price">${{ "%.2f"|format(stock.price) }}</span>
+    </div>
+    {% if stock.fibonacci and stock.fibonacci.nearest_support is not none %}
+    <div class="mw-line">Entry zone: ~${{ "%.2f"|format(stock.fibonacci.nearest_support) }}</div>
+    {% endif %}
+    {% if stock.analysis %}
+    <div class="mw-line">Stop: {{ stock.analysis.stop_loss }} &nbsp;&nbsp; Target: {{ stock.analysis.profit_target }}</div>
+    {% endif %}
+    <div class="mw-reason">{{ must_watch_reasons.get(stock.ticker, "") }}</div>
+  </div>
+  {% else %}
+  <p>No must-watch candidates this scan.</p>
+  {% endfor %}
 </section>
 
 <section>
@@ -92,12 +123,11 @@
     </tr>
     {% endfor %}
   </table>
-  <div class="chart-placeholder">[ Score distribution chart placeholder ]</div>
 </section>
 
 <section>
-  <h2>Trade Ideas</h2>
-  {% for stock in analyzed %}
+  <h2>Full Analysis</h2>
+  {% for stock in full_analysis %}
   <div class="trade-card">
     <h3>{{ stock.ticker }} - {{ stock.company }}
       {% if stock.analysis %}
@@ -116,8 +146,10 @@
     {% if stock.fibonacci %}
     <p><strong>Entry Zone (Fibonacci):</strong>
       Swing High {{ "%.2f"|format(stock.fibonacci.swing_high) }} /
-      Swing Low {{ "%.2f"|format(stock.fibonacci.swing_low) }} /
-      Nearest Support {{ "%.2f"|format(stock.fibonacci.nearest_support) if stock.fibonacci.nearest_support is not none else "n/a" }}
+      Swing Low {{ "%.2f"|format(stock.fibonacci.swing_low) }}
+      {%- if stock.fibonacci.nearest_support is not none %}
+      / Nearest Support {{ "%.2f"|format(stock.fibonacci.nearest_support) }}
+      {%- endif %}
       ({{ stock.fibonacci.trend.value }})
     </p>
     {% endif %}
@@ -133,7 +165,6 @@
       {% endfor %}
     </div>
     {% endif %}
-    <div class="chart-placeholder">[ {{ stock.ticker }} price chart placeholder ]</div>
   </div>
   {% else %}
   <p>No trade ideas generated this scan.</p>

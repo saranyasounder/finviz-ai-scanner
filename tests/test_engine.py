@@ -39,6 +39,10 @@ def _make_engine(previous=None, events=None):
     claude_analyzer = MagicMock()
     claude_analyzer.analyze.return_value = []
 
+    conviction_scorer = MagicMock()
+    conviction_scorer.must_watch_top_n = 5
+    conviction_scorer.rank.side_effect = lambda stocks: stocks
+
     report_generator = MagicMock()
     report_generator.generate.return_value = "<html></html>"
 
@@ -51,6 +55,7 @@ def _make_engine(previous=None, events=None):
         change_detector=change_detector,
         enrichment_service=enrichment_service,
         claude_analyzer=claude_analyzer,
+        conviction_scorer=conviction_scorer,
         report_generator=report_generator,
         email_service=email_service,
         top_n=10,
@@ -62,6 +67,7 @@ def _make_engine(previous=None, events=None):
         change_detector,
         enrichment_service,
         claude_analyzer,
+        conviction_scorer,
         email_service,
     )
 
@@ -73,6 +79,7 @@ def test_initial_scan_analyzes_top_n_and_emails_but_skips_change_detection():
         change_detector,
         enrichment_service,
         claude_analyzer,
+        conviction_scorer,
         email_service,
     ) = _make_engine(previous=None)
 
@@ -92,6 +99,7 @@ def test_no_changes_skips_enrichment_claude_and_email():
         change_detector,
         enrichment_service,
         claude_analyzer,
+        conviction_scorer,
         email_service,
     ) = _make_engine(previous=[_stock()], events=[])
 
@@ -118,6 +126,7 @@ def test_changes_trigger_enrichment_claude_and_email():
         change_detector,
         enrichment_service,
         claude_analyzer,
+        conviction_scorer,
         email_service,
     ) = _make_engine(previous=[_stock()], events=[event])
 
@@ -125,8 +134,35 @@ def test_changes_trigger_enrichment_claude_and_email():
 
     enrichment_service.enrich.assert_called_once()
     claude_analyzer.analyze.assert_called_once()
+    conviction_scorer.rank.assert_called_once()
     email_service.send.assert_called_once()
     snapshot_manager.save.assert_called_once()
+
+
+def test_subject_reflects_top_must_watch_ticker():
+    event = ChangeEvent(
+        ticker="AAA",
+        change_type=ChangeType.SCORE_CHANGE,
+        old_value=5,
+        new_value=10,
+        timestamp=datetime.now(),
+        description="AAA score changed.",
+    )
+    (
+        engine,
+        snapshot_manager,
+        change_detector,
+        enrichment_service,
+        claude_analyzer,
+        conviction_scorer,
+        email_service,
+    ) = _make_engine(previous=[_stock()], events=[event])
+    claude_analyzer.analyze.return_value = [_stock(ticker="AAA")]
+
+    engine.run()
+
+    _, kwargs = email_service.send.call_args
+    assert kwargs["subject"] == "Must-Watch: AAA"
 
 
 def test_enrichment_failure_still_allows_claude_and_email():
@@ -136,6 +172,7 @@ def test_enrichment_failure_still_allows_claude_and_email():
         change_detector,
         enrichment_service,
         claude_analyzer,
+        conviction_scorer,
         email_service,
     ) = _make_engine(previous=None)
     enrichment_service.enrich.side_effect = RuntimeError("browser crashed")

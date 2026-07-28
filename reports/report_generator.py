@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from datetime import datetime
 from pathlib import Path
 
@@ -10,12 +11,18 @@ from models.stock_candidate import StockCandidate
 
 TEMPLATE_DIR = Path(__file__).resolve().parent / "templates"
 
+_FIRST_SENTENCE = re.compile(r"(.+?\.)(\s|$)")
+
 
 class ReportGenerator:
-    """Renders a professional HTML report from scored stocks and detected changes."""
+    """Renders a professional HTML report from scored stocks and detected changes.
+    `analyzed` is expected to already be ordered by the caller (conviction score,
+    highest first) - this class renders in whatever order it's given, it doesn't rank.
+    """
 
-    def __init__(self, top_n: int):
+    def __init__(self, top_n: int, must_watch_top_n: int):
         self.top_n = top_n
+        self.must_watch_top_n = must_watch_top_n
         self._env = Environment(
             loader=FileSystemLoader(str(TEMPLATE_DIR)),
             autoescape=select_autoescape(["html", "jinja"]),
@@ -43,6 +50,9 @@ class ReportGenerator:
             reason_lists.setdefault(event.ticker, []).append(event.description)
         change_reasons = {t: " ".join(msgs) for t, msgs in reason_lists.items()}
 
+        must_watch = analyzed[: self.must_watch_top_n]
+        must_watch_reasons = {s.ticker: self._one_line_reason(s) for s in must_watch}
+
         template = self._env.get_template("report.html.jinja")
 
         return template.render(
@@ -53,10 +63,21 @@ class ReportGenerator:
                 updated_candidates, key=lambda s: s.score, reverse=True
             ),
             top_ranked=current[: self.top_n],
-            analyzed=analyzed,
+            must_watch=must_watch,
+            must_watch_reasons=must_watch_reasons,
+            full_analysis=analyzed,
             change_reasons=change_reasons,
             risk_summary=self._build_risk_summary(current),
         )
+
+    @staticmethod
+    def _one_line_reason(stock: StockCandidate) -> str:
+        if stock.analysis is None:
+            return "Momentum candidate - AI analysis unavailable this scan."
+
+        reasoning = stock.analysis.reasoning.strip()
+        match = _FIRST_SENTENCE.match(reasoning)
+        return match.group(1) if match else reasoning
 
     def _build_market_summary(
         self, current: list[StockCandidate], events: list[ChangeEvent]

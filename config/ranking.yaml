@@ -1,0 +1,35 @@
+# Conviction score = a weighted blend of momentum score, AI-analysis
+# confidence, and news corroboration - used to rank stocks in the email
+# report by likelihood of profit rather than raw momentum score alone.
+# Tune these without touching code.
+#
+#   conviction_score = (momentum_score * weights.momentum)
+#                     + (ai_confidence_normalized_0_100 * weights.ai_confidence)
+#                     + news_verdict_modifier
+#
+# ai_confidence_normalized_0_100 comes from ai_confidence_scale, keyed on
+# ClaudeAnalysis.confidence ("High"/"Medium"/"Low"); `default` is used when
+# there's no analysis at all, or the model returns something unexpected.
+#
+# news_verdict_modifier: if a stock has multiple headlines with different
+# verdicts, the worst one wins (any CONFLICTING headline outweighs a
+# CORROBORATED one) - one contradicting headline is a real risk signal.
+# `no_news` applies when a stock has no news_validations at all.
+
+weights:
+  momentum: 0.4
+  ai_confidence: 0.4
+
+ai_confidence_scale:
+  High: 100
+  Medium: 60
+  Low: 20
+  default: 50
+
+news_verdict_modifiers:
+  corroborated: 10
+  conflicting: -15
+  inconclusive: 0
+  no_news: 0
+
+must_watch_top_n: 5

@@ -4,6 +4,7 @@ from loguru import logger
 
 from analysis.change_detector import ChangeDetector
 from analysis.claude_analyzer import ClaudeAnalyzer
+from analysis.conviction_scorer import ConvictionScorer
 from analysis.enrichment_service import EnrichmentService
 from analysis.fibonacci import FibonacciAnalyzer
 from analysis.momentum_scorer import MomentumScorer
@@ -32,6 +33,7 @@ class TradingEngine:
         change_detector: ChangeDetector,
         enrichment_service: EnrichmentService,
         claude_analyzer: ClaudeAnalyzer,
+        conviction_scorer: ConvictionScorer,
         report_generator: ReportGenerator,
         email_service: EmailService,
         top_n: int,
@@ -42,6 +44,7 @@ class TradingEngine:
         self.change_detector = change_detector
         self.enrichment_service = enrichment_service
         self.claude_analyzer = claude_analyzer
+        self.conviction_scorer = conviction_scorer
         self.report_generator = report_generator
         self.email_service = email_service
         self.top_n = top_n
@@ -70,6 +73,7 @@ class TradingEngine:
             news_max_headlines=settings.enrichment.news_max_headlines,
             news_fetch_delay_seconds=settings.enrichment.news_fetch_delay_seconds,
         )
+        conviction_scorer = ConvictionScorer(settings.ranking_config_path)
 
         return cls(
             collector=collector,
@@ -86,7 +90,10 @@ class TradingEngine:
                 settings.prompts_config_path,
                 settings.enrichment.prompt_headline_count,
             ),
-            report_generator=ReportGenerator(settings.snapshots.top_n),
+            conviction_scorer=conviction_scorer,
+            report_generator=ReportGenerator(
+                settings.snapshots.top_n, conviction_scorer.must_watch_top_n
+            ),
             email_service=EmailService(settings.email),
             top_n=settings.snapshots.top_n,
         )
@@ -175,9 +182,17 @@ class TradingEngine:
             logger.error(f"Claude analysis step failed: {exc}")
             analyzed = candidates
 
+        try:
+            ranked = self.conviction_scorer.rank(analyzed)
+        except Exception as exc:
+            logger.error(f"Conviction ranking failed, using unranked order: {exc}")
+            ranked = analyzed
+
+        subject = self._build_subject(ranked, fallback=subject)
+
         html_report = None
         try:
-            html_report = self.report_generator.generate(scored, events, analyzed)
+            html_report = self.report_generator.generate(scored, events, ranked)
         except Exception as exc:
             logger.error(f"Report generation failed: {exc}")
 
@@ -186,6 +201,23 @@ class TradingEngine:
                 self.email_service.send(subject=subject, html_body=html_report)
             except Exception as exc:
                 logger.error(f"Email send failed: {exc}")
+
+    def _build_subject(self, ranked, fallback: str) -> str:
+        """Reflects the top Must-Watch ticker(s) in the subject line, so the
+        headline is skimmable before even opening the email."""
+
+        top_tickers = [
+            s.ticker for s in ranked[: self.conviction_scorer.must_watch_top_n]
+        ]
+        if not top_tickers:
+            return fallback
+
+        shown = top_tickers[:3]
+        subject = f"Must-Watch: {', '.join(shown)}"
+        remaining = len(top_tickers) - len(shown)
+        if remaining > 0:
+            subject += f" +{remaining} more"
+        return subject
 
     @staticmethod
     def _select_changed(scored, events):
