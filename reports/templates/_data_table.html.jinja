@@ -1,0 +1,22 @@
+{#- Shared mobile-readable data table, reused by the outcome report and (later)
+    the alert email. Renders a normal multi-column <table> on wide screens;
+    below 480px each row collapses into stacked label:value pairs via the
+    data-label/::before CSS technique, so nothing wider than a phone screen
+    is ever required to read it. A 2-column (label, value) call site is
+    already single-column by construction, so the collapse is a no-op there. #}
+{% macro data_table(headers, rows, table_id="") %}
+<table class="data-table"{% if table_id %} id="{{ table_id }}"{% endif %}>
+  <thead>
+    <tr>
+      {% for header in headers %}<th>{{ header }}</th>{% endfor %}
+    </tr>
+  </thead>
+  <tbody>
+    {% for row in rows %}
+    <tr>
+      {% for cell in row %}<td data-label="{{ headers[loop.index0] }}">{{ cell }}</td>{% endfor %}
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endmacro %}

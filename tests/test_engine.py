@@ -42,6 +42,9 @@ def _make_engine(previous=None, events=None):
     conviction_scorer = MagicMock()
     conviction_scorer.must_watch_top_n = 5
     conviction_scorer.rank.side_effect = lambda stocks: stocks
+    conviction_scorer.score.return_value = 50.0
+
+    outcome_tracker = MagicMock()
 
     report_generator = MagicMock()
     report_generator.generate.return_value = "<html></html>"
@@ -56,6 +59,7 @@ def _make_engine(previous=None, events=None):
         enrichment_service=enrichment_service,
         claude_analyzer=claude_analyzer,
         conviction_scorer=conviction_scorer,
+        outcome_tracker=outcome_tracker,
         report_generator=report_generator,
         email_service=email_service,
         top_n=10,
@@ -68,6 +72,7 @@ def _make_engine(previous=None, events=None):
         enrichment_service,
         claude_analyzer,
         conviction_scorer,
+        outcome_tracker,
         email_service,
     )
 
@@ -80,6 +85,7 @@ def test_initial_scan_analyzes_top_n_and_emails_but_skips_change_detection():
         enrichment_service,
         claude_analyzer,
         conviction_scorer,
+        outcome_tracker,
         email_service,
     ) = _make_engine(previous=None)
 
@@ -100,6 +106,7 @@ def test_no_changes_skips_enrichment_claude_and_email():
         enrichment_service,
         claude_analyzer,
         conviction_scorer,
+        outcome_tracker,
         email_service,
     ) = _make_engine(previous=[_stock()], events=[])
 
@@ -127,16 +134,39 @@ def test_changes_trigger_enrichment_claude_and_email():
         enrichment_service,
         claude_analyzer,
         conviction_scorer,
+        outcome_tracker,
         email_service,
     ) = _make_engine(previous=[_stock()], events=[event])
+
+    claude_analyzer.analyze.return_value = [_stock(ticker="AAA")]
 
     engine.run()
 
     enrichment_service.enrich.assert_called_once()
     claude_analyzer.analyze.assert_called_once()
     conviction_scorer.rank.assert_called_once()
+    outcome_tracker.log_signal.assert_called_once()
+    outcome_tracker.record_due_checkpoints.assert_called_once()
     email_service.send.assert_called_once()
     snapshot_manager.save.assert_called_once()
+
+
+def test_record_due_checkpoints_runs_every_cycle_even_with_no_changes():
+    (
+        engine,
+        snapshot_manager,
+        change_detector,
+        enrichment_service,
+        claude_analyzer,
+        conviction_scorer,
+        outcome_tracker,
+        email_service,
+    ) = _make_engine(previous=[_stock()], events=[])
+
+    engine.run()
+
+    outcome_tracker.log_signal.assert_not_called()
+    outcome_tracker.record_due_checkpoints.assert_called_once()
 
 
 def test_subject_reflects_top_must_watch_ticker():
@@ -155,6 +185,7 @@ def test_subject_reflects_top_must_watch_ticker():
         enrichment_service,
         claude_analyzer,
         conviction_scorer,
+        outcome_tracker,
         email_service,
     ) = _make_engine(previous=[_stock()], events=[event])
     claude_analyzer.analyze.return_value = [_stock(ticker="AAA")]
@@ -173,6 +204,7 @@ def test_enrichment_failure_still_allows_claude_and_email():
         enrichment_service,
         claude_analyzer,
         conviction_scorer,
+        outcome_tracker,
         email_service,
     ) = _make_engine(previous=None)
     enrichment_service.enrich.side_effect = RuntimeError("browser crashed")

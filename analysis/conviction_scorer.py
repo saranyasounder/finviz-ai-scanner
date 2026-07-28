@@ -44,13 +44,25 @@ class ConvictionScorer:
         return self.ai_confidence_scale.get(stock.analysis.confidence, default)
 
     def _news_verdict_modifier(self, stock: StockCandidate) -> float:
-        if not stock.news_validations:
+        worst = self.worst_verdict(stock)
+        if worst is None:
             return self.news_verdict_modifiers.get("no_news", 0)
+        return self.news_verdict_modifiers[worst.value]
+
+    @staticmethod
+    def worst_verdict(stock: StockCandidate) -> NewsVerdict | None:
+        """The single most risk-relevant verdict across a stock's headlines:
+        any CONFLICTING headline outweighs a CORROBORATED one, since one
+        contradicting headline is a real risk signal. None if there's no news
+        at all - callers distinguish that from an explicit INCONCLUSIVE."""
+
+        if not stock.news_validations:
+            return None
 
         verdicts = {v.verdict for v in stock.news_validations}
 
         if NewsVerdict.CONFLICTING in verdicts:
-            return self.news_verdict_modifiers["conflicting"]
+            return NewsVerdict.CONFLICTING
         if NewsVerdict.CORROBORATED in verdicts:
-            return self.news_verdict_modifiers["corroborated"]
-        return self.news_verdict_modifiers["inconclusive"]
+            return NewsVerdict.CORROBORATED
+        return NewsVerdict.INCONCLUSIVE

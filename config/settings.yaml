@@ -53,3 +53,12 @@ retention:
   # data/snapshots/, the permanent historical store, which has its own
   # separate retention policy above (snapshots.retention_days).
   downloads_keep_days: 0
+
+outcome_tracking:
+  # Step 1 of the alerting tier: log every Must-Watch candidate as if it had
+  # alerted, and check back in on it at these intervals to see whether the
+  # scoring/AI-analysis is actually any good - before a single real alert
+  # email is ever sent (that's Tier 1/2, built later).
+  checkpoint_minutes: [30, 60, 240, 1440]
+  conviction_bucket_high: 70
+  conviction_bucket_medium: 40

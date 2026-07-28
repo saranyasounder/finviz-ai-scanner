@@ -9,6 +9,7 @@ from analysis.enrichment_service import EnrichmentService
 from analysis.fibonacci import FibonacciAnalyzer
 from analysis.momentum_scorer import MomentumScorer
 from analysis.news_validator import NewsValidator
+from analysis.outcome_tracker import AlertOutcomeTracker
 from browser.browser import Browser
 from config.settings import Settings
 from finviz.collector import FinvizCollector
@@ -34,6 +35,7 @@ class TradingEngine:
         enrichment_service: EnrichmentService,
         claude_analyzer: ClaudeAnalyzer,
         conviction_scorer: ConvictionScorer,
+        outcome_tracker: AlertOutcomeTracker,
         report_generator: ReportGenerator,
         email_service: EmailService,
         top_n: int,
@@ -45,6 +47,7 @@ class TradingEngine:
         self.enrichment_service = enrichment_service
         self.claude_analyzer = claude_analyzer
         self.conviction_scorer = conviction_scorer
+        self.outcome_tracker = outcome_tracker
         self.report_generator = report_generator
         self.email_service = email_service
         self.top_n = top_n
@@ -74,6 +77,13 @@ class TradingEngine:
             news_fetch_delay_seconds=settings.enrichment.news_fetch_delay_seconds,
         )
         conviction_scorer = ConvictionScorer(settings.ranking_config_path)
+        outcome_tracker = AlertOutcomeTracker(
+            db_path=settings.outcomes_db_path,
+            checkpoint_minutes=settings.outcome_tracking.checkpoint_minutes,
+            price_provider=PriceHistoryProvider(),
+            conviction_bucket_high=settings.outcome_tracking.conviction_bucket_high,
+            conviction_bucket_medium=settings.outcome_tracking.conviction_bucket_medium,
+        )
 
         return cls(
             collector=collector,
@@ -91,6 +101,7 @@ class TradingEngine:
                 settings.enrichment.prompt_headline_count,
             ),
             conviction_scorer=conviction_scorer,
+            outcome_tracker=outcome_tracker,
             report_generator=ReportGenerator(
                 settings.snapshots.top_n, conviction_scorer.must_watch_top_n
             ),
@@ -102,12 +113,19 @@ class TradingEngine:
         with log_execution_time("Trading engine cycle"):
             self._run()
             self._cleanup_old_snapshots()
+            self._record_due_outcome_checkpoints()
 
     def _cleanup_old_snapshots(self) -> None:
         try:
             self.snapshot_manager.cleanup_old()
         except Exception as exc:
             logger.error(f"Snapshot cleanup failed: {exc}")
+
+    def _record_due_outcome_checkpoints(self) -> None:
+        try:
+            self.outcome_tracker.record_due_checkpoints()
+        except Exception as exc:
+            logger.error(f"Outcome checkpoint recording failed: {exc}")
 
     def _run(self) -> None:
         try:
@@ -188,6 +206,8 @@ class TradingEngine:
             logger.error(f"Conviction ranking failed, using unranked order: {exc}")
             ranked = analyzed
 
+        self._log_outcome_signals(ranked)
+
         subject = self._build_subject(ranked, fallback=subject)
 
         html_report = None
@@ -201,6 +221,19 @@ class TradingEngine:
                 self.email_service.send(subject=subject, html_body=html_report)
             except Exception as exc:
                 logger.error(f"Email send failed: {exc}")
+
+    def _log_outcome_signals(self, ranked) -> None:
+        """Logs the Must-Watch subset as if it had alerted - Step 1 of the
+        alerting tier, evidence for whether scoring/AI-analysis is any good,
+        built before any live alert email exists."""
+
+        must_watch = ranked[: self.conviction_scorer.must_watch_top_n]
+        for stock in must_watch:
+            try:
+                conviction_score = self.conviction_scorer.score(stock)
+                self.outcome_tracker.log_signal(stock, conviction_score)
+            except Exception as exc:
+                logger.error(f"Outcome signal logging failed for {stock.ticker}: {exc}")
 
     def _build_subject(self, ranked, fallback: str) -> str:
         """Reflects the top Must-Watch ticker(s) in the subject line, so the

@@ -53,6 +53,11 @@ logging:
 
 retention:
   downloads_keep_days: 0
+
+outcome_tracking:
+  checkpoint_minutes: [30, 60, 240, 1440]
+  conviction_bucket_high: 70
+  conviction_bucket_medium: 40
 """
 
 

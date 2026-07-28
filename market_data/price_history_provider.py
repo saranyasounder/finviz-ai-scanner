@@ -24,6 +24,57 @@ class PriceHistoryProvider:
 
         return self._bars_from_dataframe(history)
 
+    def get_current_price(self, ticker: str) -> float:
+        """A single lightweight current-price lookup, e.g. for an outcome-tracking
+        checkpoint. For many tickers at once, prefer get_current_prices_many()."""
+
+        logger.debug(f"Fetching current price for {ticker}")
+
+        try:
+            last_price = yf.Ticker(ticker).fast_info["last_price"]
+        except Exception as exc:
+            raise PriceHistoryError(
+                f"No current price available for {ticker}: {exc}"
+            ) from exc
+
+        if last_price is None:
+            raise PriceHistoryError(f"No current price available for {ticker}")
+
+        return float(last_price)
+
+    def get_current_prices_many(self, tickers: list[str]) -> dict[str, float]:
+        """Batched current-price lookup - one HTTP round trip for the whole list."""
+
+        if not tickers:
+            return {}
+
+        logger.debug(
+            f"Fetching current price for {len(tickers)} ticker(s) in one batch"
+        )
+
+        data = yf.download(
+            tickers=tickers,
+            period="1d",
+            group_by="ticker",
+            progress=False,
+            threads=True,
+        )
+
+        prices: dict[str, float] = {}
+
+        for ticker in tickers:
+            try:
+                ticker_df = (
+                    data[ticker] if isinstance(data.columns, pd.MultiIndex) else data
+                )
+                if ticker_df.empty:
+                    raise PriceHistoryError(f"No current price available for {ticker}")
+                prices[ticker] = float(ticker_df["Close"].dropna().iloc[-1])
+            except Exception as exc:
+                logger.error(f"Current price batch fetch failed for {ticker}: {exc}")
+
+        return prices
+
     def get_bars_many(
         self, tickers: list[str], lookback_days: int
     ) -> dict[str, list[PriceBar]]:

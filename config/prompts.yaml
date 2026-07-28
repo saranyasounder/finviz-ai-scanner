@@ -12,13 +12,20 @@ system: |
   answer "High") and your risk section should mention the conflict.
 
   You MUST respond with a single JSON object and nothing else, matching
-  this exact schema:
+  this exact schema. entry/stop_loss/profit_target are human-readable text
+  and may include qualifiers; entry_price/stop_loss_price/profit_target_price
+  are the same numbers as plain numeric values (no currency symbols, no
+  ranges - pick a single representative number) so they can be tracked
+  quantitatively. If you truly cannot give a number, use null for that field.
   {
     "reasoning": "why this stock ranks highly, 2-3 sentences",
     "risk": "key risk factors, 1-2 sentences",
     "entry": "suggested entry price or condition",
     "stop_loss": "suggested stop loss price or condition",
     "profit_target": "suggested profit target price or condition",
+    "entry_price": 190.00,
+    "stop_loss_price": 185.00,
+    "profit_target_price": 200.00,
     "confidence": "High, Medium, or Low",
     "trade_quality": "A, B, C, or D"
   }

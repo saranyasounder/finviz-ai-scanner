@@ -96,6 +96,13 @@ class RetentionSettings:
 
 
 @dataclass(frozen=True)
+class OutcomeTrackingSettings:
+    checkpoint_minutes: list[int]
+    conviction_bucket_high: float
+    conviction_bucket_medium: float
+
+
+@dataclass(frozen=True)
 class Settings:
     base_dir: Path
     downloads_dir: Path
@@ -109,10 +116,12 @@ class Settings:
     email: EmailSettings
     logging: LoggingSettings
     retention: RetentionSettings
+    outcome_tracking: OutcomeTrackingSettings
     scoring_config_path: Path
     prompts_config_path: Path
     market_holidays_config_path: Path
     ranking_config_path: Path
+    outcomes_db_path: Path
 
 
 def load_settings(config_dir: Path | None = None) -> Settings:
@@ -171,8 +180,10 @@ def load_settings(config_dir: Path | None = None) -> Settings:
             level=raw["logging"]["level"],
         ),
         retention=RetentionSettings(**raw["retention"]),
+        outcome_tracking=OutcomeTrackingSettings(**raw["outcome_tracking"]),
         scoring_config_path=config_dir / "scoring.yaml",
         prompts_config_path=config_dir / "prompts.yaml",
         market_holidays_config_path=config_dir / "market_holidays.yaml",
         ranking_config_path=config_dir / "ranking.yaml",
+        outcomes_db_path=BASE_DIR / "data" / "outcomes.db",
     )
