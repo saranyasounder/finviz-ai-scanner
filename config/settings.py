@@ -91,6 +91,11 @@ class LoggingSettings:
 
 
 @dataclass(frozen=True)
+class RetentionSettings:
+    downloads_keep_days: int
+
+
+@dataclass(frozen=True)
 class Settings:
     base_dir: Path
     downloads_dir: Path
@@ -103,6 +108,7 @@ class Settings:
     enrichment: EnrichmentSettings
     email: EmailSettings
     logging: LoggingSettings
+    retention: RetentionSettings
     scoring_config_path: Path
     prompts_config_path: Path
     market_holidays_config_path: Path
@@ -164,6 +170,7 @@ def load_settings(config_dir: Path | None = None) -> Settings:
             retention=raw["logging"]["retention"],
             level=raw["logging"]["level"],
         ),
+        retention=RetentionSettings(**raw["retention"]),
         scoring_config_path=config_dir / "scoring.yaml",
         prompts_config_path=config_dir / "prompts.yaml",
         market_holidays_config_path=config_dir / "market_holidays.yaml",

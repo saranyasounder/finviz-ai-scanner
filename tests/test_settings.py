@@ -50,6 +50,9 @@ logging:
   rotation: "00:00"
   retention: "14 days"
   level: INFO
+
+retention:
+  downloads_keep_days: 0
 """
 
 

@@ -110,7 +110,31 @@ Nothing is hardcoded - every threshold, path, and knob lives in `config/`:
   `threshold_single`, `range`). Adding a new scoring factor is a YAML edit.
 - `prompts.yaml` - the Claude system/user prompt templates.
 - `market_holidays.yaml` - NYSE full-day closures; update yearly.
+- `ranking.yaml` - conviction-score weights (momentum/AI-confidence/news
+  verdict) that rank the email's Must-Watch and Full Analysis sections.
 - `.env` - secrets only (Finviz URL, API keys, SMTP credentials).
+
+## Email report
+
+Each report has two parts, both ordered by **conviction score**
+(`analysis/conviction_scorer.py`) - a weighted blend of momentum score, AI
+confidence, and news corroboration - rather than raw momentum score alone:
+
+- **Must-Watch Now** - the top `ranking.yaml: must_watch_top_n` tickers only:
+  price, entry zone (Fibonacci nearest support, omitted if unavailable), stop,
+  target, and a one-line reason. Built to be read in under 30 seconds on a
+  phone. The email subject reflects these tickers.
+- **Full Analysis** - the complete breakdown (AI reasoning, news headlines +
+  verdicts, Fibonacci levels, risk) for every ranked candidate.
+
+## Cleanup
+
+- `data/snapshots/` (the permanent scan history) has its own retention policy
+  (`snapshots.retention_days`), run every cycle via `SnapshotManager.cleanup_old()`.
+- `downloads/*.csv` (transient, same-day-only by default) is cleaned up by
+  `utils/retention.py`, triggered automatically once per day after market
+  close - only once today's pipeline has actually produced a snapshot. Run it
+  manually anytime with `python -m utils.retention --dry-run`.
 
 ## Testing
 
@@ -133,5 +157,8 @@ call, or real credentials.
 - ✅ Codebase audit pass: shared `PipelineError` hierarchy, external-call
   timeouts, batched price-history fetches, snapshot retention actually
   wired in, and coverage for every non-trivial previously-untested module.
+- ✅ Actionable report rework: conviction-score ranking (not raw momentum),
+  a Must-Watch/Full Analysis split, dead chart placeholders removed, and
+  automatic same-day cleanup of transient `downloads/` artifacts.
 - ⏳ Future (Stage 9): backtesting/performance tracking against the
   historical snapshots already being persisted in `data/snapshots/`.

@@ -47,3 +47,9 @@ logging:
   rotation: "00:00"
   retention: "14 days"
   level: INFO
+
+retention:
+  # Transient artifacts only (raw screener CSVs in downloads/) - never touches
+  # data/snapshots/, the permanent historical store, which has its own
+  # separate retention policy above (snapshots.retention_days).
+  downloads_keep_days: 0
