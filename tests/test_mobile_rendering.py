@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 from playwright.sync_api import sync_playwright
 
 from analysis.outcome_tracker import AlertOutcomeTracker
-from models.claude_analysis import ClaudeAnalysis
+from models.claude_analysis import ClaudeAnalysis, Confidence, EntryZone, Target
 from models.stock_candidate import StockCandidate
 from reports.outcome_report_generator import OutcomeReportGenerator
 
@@ -23,16 +23,18 @@ class _StubPriceProvider:
 
 def _stock(ticker: str) -> StockCandidate:
     analysis = ClaudeAnalysis(
+        action="ENTER_NOW",
+        entry_zone=EntryZone(
+            low=50.0, high=50.0, anchor_type="FIBONACCI_SUPPORT", anchor_price=50.0
+        ),
+        stop_loss=48.0,
+        target=Target(price=55.0, risk_reward="2.0R", basis="test"),
+        risk_per_share=2.0,
+        invalidation="test",
+        time_horizon="Same-session intraday trade only. Exit before market close.",
+        confidence=Confidence(score=85, grade="HIGH"),
+        news_alignment="NONE",
         reasoning="r",
-        risk="r",
-        entry="50",
-        stop_loss="48",
-        profit_target="55",
-        confidence="High",
-        trade_quality="A",
-        entry_price=50.0,
-        stop_loss_price=48.0,
-        profit_target_price=55.0,
     )
     return StockCandidate(
         ticker=ticker,

@@ -23,19 +23,19 @@ change_detection:
   price_delta_pct: 1.0
 
 claude:
-  # Routed through OpenRouter's OpenAI-compatible API, not Anthropic's native API.
-  # Verify the exact slug at https://openrouter.ai/models if analysis calls 404.
-  model: anthropic/claude-sonnet-5
-  # Real completions for this schema run ~150-220 tokens (measured). 500 is a
-  # ~2x safety margin, not a bare minimum - the old 1024 was ~5x oversized.
-  # Doesn't change cost directly (output is billed by tokens actually
-  # generated, not this cap) but OpenRouter's balance-affordability check
-  # reserves against this number before generating, so a lower cap means
-  # fewer spurious 402s at a low balance.
-  max_tokens: 500
-  base_url: https://openrouter.ai/api/v1
-  site_url: https://github.com/saranyasounder/finviz-ai-scanner
-  site_name: Finviz AI Scanner
+  # Anthropic's native API (CLAUDE_API_KEY in .env), not OpenRouter - no
+  # provider prefix on the model id here (that was an OpenRouter-only
+  # convention).
+  model: claude-sonnet-5
+  # The nested action/entry_zone/target/confidence schema is more verbose
+  # than the old flat one (nested objects + a 60-word reasoning field).
+  # Measured real completions at ~370 tokens for this schema (see migration
+  # notes) - 2000 is a generous margin above that.
+  max_tokens: 2000
+  # Low and deterministic - this is a same-second trading decision re-run
+  # every 15 minutes, not creative writing. We want the same inputs to
+  # reliably produce the same action.
+  temperature: 0.15
   request_timeout_seconds: 30
   # Momentum-score floor below which a candidate skips the AI call entirely
   # (it still gets scored/enriched/reported - just no AI writeup). Tune this

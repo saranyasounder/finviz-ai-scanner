@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 
 from analysis.outcome_tracker import AlertOutcomeTracker
 from models.alert_signal import OutcomeStatus
-from models.claude_analysis import ClaudeAnalysis
+from models.claude_analysis import ClaudeAnalysis, Confidence, EntryZone, Target
 from models.stock_candidate import StockCandidate
 
 
@@ -29,16 +29,21 @@ def _stock(
     analysis = None
     if entry is not None:
         analysis = ClaudeAnalysis(
+            action="ENTER_NOW",
+            entry_zone=EntryZone(
+                low=entry,
+                high=entry,
+                anchor_type="FIBONACCI_SUPPORT",
+                anchor_price=entry,
+            ),
+            stop_loss=stop,
+            target=Target(price=target, risk_reward="2.0R", basis="test"),
+            risk_per_share=abs(entry - stop),
+            invalidation="test",
+            time_horizon="Same-session intraday trade only. Exit before market close.",
+            confidence=Confidence(score=60, grade=confidence.upper()),
+            news_alignment="NONE",
             reasoning="r",
-            risk="r",
-            entry=str(entry),
-            stop_loss=str(stop),
-            profit_target=str(target),
-            confidence=confidence,
-            trade_quality="B",
-            entry_price=entry,
-            stop_loss_price=stop,
-            profit_target_price=target,
         )
 
     return StockCandidate(

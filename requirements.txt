@@ -14,7 +14,7 @@ win32_setctime==1.2.0
 
 pyyaml==6.0.3
 apscheduler==3.11.3
-openai==2.48.0
+anthropic==0.120.2
 jinja2==3.1.6
 pydantic==2.13.4
 yfinance==1.5.2

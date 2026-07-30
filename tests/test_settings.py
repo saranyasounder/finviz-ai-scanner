@@ -28,11 +28,9 @@ change_detection:
   price_delta_pct: 1.0
 
 claude:
-  model: anthropic/claude-sonnet-5
-  max_tokens: 500
-  base_url: https://openrouter.ai/api/v1
-  site_url: https://example.invalid
-  site_name: Test
+  model: claude-sonnet-5
+  max_tokens: 650
+  temperature: 0.15
   request_timeout_seconds: 30
   min_score_to_analyze: 30
 

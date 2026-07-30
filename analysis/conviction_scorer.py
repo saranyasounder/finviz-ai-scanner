@@ -20,7 +20,7 @@ class ConvictionScorer:
 
         self.momentum_weight: float = config["weights"]["momentum"]
         self.ai_confidence_weight: float = config["weights"]["ai_confidence"]
-        self.ai_confidence_scale: dict[str, float] = config["ai_confidence_scale"]
+        self.default_ai_confidence: float = config["default_ai_confidence"]
         self.news_verdict_modifiers: dict[str, float] = config["news_verdict_modifiers"]
         self.must_watch_top_n: int = config["must_watch_top_n"]
 
@@ -38,10 +38,9 @@ class ConvictionScorer:
         return sorted(stocks, key=self.score, reverse=True)
 
     def _ai_confidence_normalized(self, stock: StockCandidate) -> float:
-        default = self.ai_confidence_scale.get("default", 50)
         if stock.analysis is None:
-            return default
-        return self.ai_confidence_scale.get(stock.analysis.confidence, default)
+            return self.default_ai_confidence
+        return stock.analysis.confidence.score
 
     def _news_verdict_modifier(self, stock: StockCandidate) -> float:
         worst = self.worst_verdict(stock)

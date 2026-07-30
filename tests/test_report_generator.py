@@ -1,14 +1,33 @@
-from datetime import datetime
 from pathlib import Path
 
 from analysis.conviction_scorer import ConvictionScorer
-from models.change_event import ChangeEvent, ChangeType
-from models.claude_analysis import ClaudeAnalysis
-from models.fibonacci_levels import FibonacciLevels, TrendDirection
+from models.claude_analysis import ClaudeAnalysis, Confidence, EntryZone, Target
 from models.stock_candidate import StockCandidate
 from reports.report_generator import ReportGenerator
 
 RANKING_CONFIG_PATH = Path(__file__).resolve().parent.parent / "config" / "ranking.yaml"
+
+
+def _analysis(
+    action: str = "ENTER_NOW",
+    confidence_score: int = 80,
+    confidence_grade: str = "HIGH",
+    news_alignment: str = "NONE",
+) -> ClaudeAnalysis:
+    return ClaudeAnalysis(
+        action=action,
+        entry_zone=EntryZone(
+            low=9.5, high=10.5, anchor_type="FIBONACCI_SUPPORT", anchor_price=10.0
+        ),
+        stop_loss=9.0,
+        target=Target(price=12.0, risk_reward="2.0R", basis="Nearest resistance"),
+        risk_per_share=1.0,
+        invalidation="Break below 9.0.",
+        time_horizon="Same-session intraday trade only. Exit before market close.",
+        confidence=Confidence(score=confidence_score, grade=confidence_grade),
+        news_alignment=news_alignment,
+        reasoning="Strong momentum near support.",
+    )
 
 
 def _stock(
@@ -31,28 +50,19 @@ def _stock(
     return StockCandidate(**base)
 
 
-def _event(
-    ticker: str, change_type: ChangeType, description: str = "changed"
-) -> ChangeEvent:
-    return ChangeEvent(
-        ticker=ticker,
-        change_type=change_type,
-        old_value=None,
-        new_value=None,
-        timestamp=datetime.now(),
-        description=description,
-    )
-
-
-def _generator(
-    must_watch_top_n: int | None = None,
-    bucket_high: float = 70.0,
-    bucket_medium: float = 40.0,
-) -> ReportGenerator:
+def _generator(must_watch_top_n: int | None = None) -> ReportGenerator:
     scorer = ConvictionScorer(RANKING_CONFIG_PATH)
     if must_watch_top_n is not None:
         scorer.must_watch_top_n = must_watch_top_n
-    return ReportGenerator(scorer, bucket_high, bucket_medium)
+    return ReportGenerator(scorer)
+
+
+def _must_watch_section(html: str) -> str:
+    return html.split("Must-Watch Now")[1].split("Trade Alerts")[0]
+
+
+def _trade_alerts_section(html: str) -> str:
+    return html.split("Trade Alerts")[1]
 
 
 def test_risk_summary_counts_high_beta_and_short_float():
@@ -71,68 +81,27 @@ def test_risk_summary_counts_high_beta_and_short_float():
     assert "1 candidate(s) with short float" in html
 
 
-def test_must_watch_respects_top_n_but_full_analysis_shows_everyone():
+def test_must_watch_respects_top_n_but_trade_alerts_shows_everyone():
     generator = _generator(must_watch_top_n=1)
-    ranked = [_stock("FIRST", score=90), _stock("SECOND", score=80)]
+    ranked = [
+        _stock("FIRST", score=90, analysis=_analysis()),
+        _stock("SECOND", score=80, analysis=_analysis()),
+    ]
 
     html = generator.generate(current=ranked, events=[], analyzed=ranked)
 
-    must_watch_section = html.split("Must-Watch Now")[1].split("Full Analysis")[0]
-    full_analysis_section = html.split("Full Analysis")[1]
+    must_watch_section = _must_watch_section(html)
+    trade_alerts_section = _trade_alerts_section(html)
 
     assert "FIRST" in must_watch_section
     assert "SECOND" not in must_watch_section
-    assert "FIRST" in full_analysis_section
-    assert "SECOND" in full_analysis_section
-
-
-def test_must_watch_shows_one_line_reason_from_first_sentence():
-    generator = _generator()
-    stock = _stock(
-        "AAA",
-        score=90,
-        analysis=ClaudeAnalysis(
-            reasoning="Strong breakout above resistance. Volume confirms the move with institutional buying.",
-            risk="r",
-            entry="e",
-            stop_loss="95.00",
-            profit_target="120.00",
-            confidence="High",
-            trade_quality="A",
-        ),
-    )
-
-    html = generator.generate(current=[stock], events=[], analyzed=[stock])
-
-    must_watch_section = html.split("Must-Watch Now")[1].split("Full Analysis")[0]
-    assert "Strong breakout above resistance." in must_watch_section
-    assert "Volume confirms the move" not in must_watch_section
-
-
-def test_must_watch_omits_entry_zone_when_no_nearest_support():
-    generator = _generator()
-    stock = _stock(
-        "AAA",
-        score=90,
-        fibonacci=FibonacciLevels(
-            swing_high=100.0,
-            swing_low=90.0,
-            levels={"0.5": 95.0},
-            nearest_support=None,
-            nearest_resistance=100.0,
-            trend=TrendDirection.SIDEWAYS,
-        ),
-    )
-
-    html = generator.generate(current=[stock], events=[], analyzed=[stock])
-
-    must_watch_section = html.split("Must-Watch Now")[1].split("Full Analysis")[0]
-    assert "Entry zone" not in must_watch_section
+    assert "FIRST" in trade_alerts_section
+    assert "SECOND" in trade_alerts_section
 
 
 def test_report_never_renders_placeholders_or_na():
     generator = _generator()
-    stock = _stock("AAA", score=50)
+    stock = _stock("AAA", score=50, analysis=_analysis())
 
     html = generator.generate(current=[stock], events=[], analyzed=[stock])
 
@@ -142,11 +111,9 @@ def test_report_never_renders_placeholders_or_na():
 
 def test_redundant_sections_are_gone():
     generator = _generator()
-    stock = _stock("AAA", score=50)
+    stock = _stock("AAA", score=50, analysis=_analysis())
 
-    html = generator.generate(
-        current=[stock], events=[_event("AAA", ChangeType.NEW)], analyzed=[stock]
-    )
+    html = generator.generate(current=[stock], events=[], analyzed=[stock])
 
     assert "New Candidates" not in html
     assert "Updated Candidates" not in html
@@ -154,68 +121,112 @@ def test_redundant_sections_are_gone():
     assert "Score Breakdown" not in html
 
 
-def test_full_analysis_shows_conviction_score_and_tier():
-    generator = _generator(bucket_high=70.0, bucket_medium=40.0)
-    # High momentum, high AI confidence, corroborated news -> well above 70.
+def test_must_watch_table_shows_action_entry_stop_target_confidence_news():
+    generator = _generator()
     stock = _stock(
         "AAA",
         score=90,
-        analysis=ClaudeAnalysis(
-            reasoning="r",
-            risk="r",
-            entry="e",
-            stop_loss="s",
-            profit_target="t",
-            confidence="High",
-            trade_quality="A",
+        analysis=_analysis(
+            action="ENTER_NOW",
+            confidence_score=82,
+            confidence_grade="HIGH",
+            news_alignment="CORROBORATED",
         ),
     )
 
     html = generator.generate(current=[stock], events=[], analyzed=[stock])
-    card = html.split("Full Analysis")[1]
+    section = _must_watch_section(html)
 
-    assert 'tier-high"' in card
-    assert "Conviction" in card
+    assert "ENTER NOW" in section
+    assert "9.50 - 10.50" in section
+    assert "9.00" in section
+    assert "12.00" in section
+    assert "82 (HIGH)" in section
+    assert "CORROBORATED" in section
 
 
-def test_full_analysis_low_conviction_gets_low_tier():
-    generator = _generator(bucket_high=70.0, bucket_medium=40.0)
-    # Low momentum, no analysis (default confidence 50), no news -> below 40.
-    stock = _stock("AAA", score=10)
+def test_must_watch_action_colors_map_correctly():
+    generator = _generator()
+    stocks = [
+        _stock("A", score=90, analysis=_analysis(action="ENTER_NOW")),
+        _stock("B", score=80, analysis=_analysis(action="WAIT_FOR_PULLBACK")),
+        _stock("C", score=70, analysis=_analysis(action="ALREADY_EXTENDED")),
+        _stock("D", score=60, analysis=_analysis(action="AVOID")),
+    ]
+    generator2 = _generator(must_watch_top_n=4)
+
+    html = generator2.generate(current=stocks, events=[], analyzed=stocks)
+    section = _must_watch_section(html)
+
+    assert "#22c55e" in section  # ENTER_NOW -> green
+    assert "#facc15" in section  # WAIT_FOR_PULLBACK -> amber
+    assert "#f87171" in section  # ALREADY_EXTENDED/AVOID -> red
+
+
+def test_must_watch_shows_no_decision_row_when_analysis_missing():
+    generator = _generator()
+    stock = _stock("AAA", score=50)  # no analysis
 
     html = generator.generate(current=[stock], events=[], analyzed=[stock])
-    card = html.split("Full Analysis")[1]
+    section = _must_watch_section(html)
 
-    assert 'tier-low"' in card
+    assert "No AI decision this scan" in section
 
 
-def test_change_reason_appears_as_flag_on_full_analysis_card():
+def test_ticker_column_uses_sticky_positioning():
     generator = _generator()
-    stock = _stock("AAA", score=50)
+    stock = _stock("AAA", score=50, analysis=_analysis())
 
-    html = generator.generate(
-        current=[stock],
-        events=[
-            _event(
-                "AAA",
-                ChangeType.SCORE_CHANGE,
-                description="AAA score changed by +12.3.",
-            )
-        ],
-        analyzed=[stock],
+    html = generator.generate(current=[stock], events=[], analyzed=[stock])
+
+    assert "position: sticky" in html
+
+
+def test_trade_alert_card_shows_action_badge_as_largest_element_in_order():
+    generator = _generator()
+    stock = _stock("AAA", score=90, analysis=_analysis(action="ENTER_NOW"))
+
+    html = generator.generate(current=[stock], events=[], analyzed=[stock])
+    card = _trade_alerts_section(html)
+
+    ticker_pos = card.index("AAA")
+    action_pos = card.index("ENTER NOW")
+    confidence_pos = card.index("Confidence:")
+    entry_pos = card.index("Entry:")
+    stop_pos = card.index("Stop:")
+    target_pos = card.index("Target:")
+    reasoning_pos = card.index("Strong momentum near support.")
+
+    assert (
+        ticker_pos
+        < action_pos
+        < confidence_pos
+        < entry_pos
+        < stop_pos
+        < target_pos
+        < reasoning_pos
     )
-    card = html.split("Full Analysis")[1]
-
-    assert "AAA score changed by +12.3." in card
+    assert "font-size: 20px" in card  # action badge is the largest text on the card
 
 
-def test_full_analysis_omits_support_block_when_nothing_to_show():
+def test_trade_alert_card_shows_unavailable_message_when_no_analysis():
     generator = _generator()
-    # No analysis, no fibonacci, no news -> the de-emphasized support block
-    # (risk/fibonacci/news) should not render an empty div.
-    stock = _stock("AAA", score=50)
+    stock = _stock("AAA", score=50)  # no analysis
 
     html = generator.generate(current=[stock], events=[], analyzed=[stock])
-    card = html.split("Full Analysis")[1]
+    card = _trade_alerts_section(html)
 
-    assert "fa-support" not in card
+    assert "Analysis unavailable for this stock." in card
+
+
+def test_no_grid_or_flexbox_in_must_watch_or_trade_alerts():
+    generator = _generator()
+    stock = _stock("AAA", score=50, analysis=_analysis())
+
+    html = generator.generate(current=[stock], events=[], analyzed=[stock])
+    combined = _must_watch_section(html) + _trade_alerts_section(html)
+
+    assert "display: flex" not in combined
+    assert "display:flex" not in combined
+    assert "display: grid" not in combined
+    assert "display:grid" not in combined

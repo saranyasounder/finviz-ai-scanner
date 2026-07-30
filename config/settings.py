@@ -56,9 +56,7 @@ class ClaudeSettings:
     api_key: str
     model: str
     max_tokens: int
-    base_url: str
-    site_url: str
-    site_name: str
+    temperature: float
     request_timeout_seconds: float
     min_score_to_analyze: float
 
@@ -155,12 +153,10 @@ def load_settings(config_dir: Path | None = None) -> Settings:
         ),
         change_detection=ChangeDetectionThresholds(**raw["change_detection"]),
         claude=ClaudeSettings(
-            api_key=os.getenv("OPENROUTER_API_KEY", ""),
+            api_key=os.getenv("CLAUDE_API_KEY", ""),
             model=raw["claude"]["model"],
             max_tokens=raw["claude"]["max_tokens"],
-            base_url=raw["claude"]["base_url"],
-            site_url=raw["claude"]["site_url"],
-            site_name=raw["claude"]["site_name"],
+            temperature=raw["claude"]["temperature"],
             request_timeout_seconds=raw["claude"]["request_timeout_seconds"],
             min_score_to_analyze=raw["claude"]["min_score_to_analyze"],
         ),

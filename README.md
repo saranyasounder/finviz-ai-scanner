@@ -4,7 +4,7 @@ An automated momentum-stock scanner: logs into Finviz Elite, downloads the
 saved screener, scores candidates against a configurable rule engine, detects
 only meaningful changes since the last scan, enriches the changed stocks with
 recent news corroboration and Fibonacci retracement levels, sends just those
-stocks to Claude (via OpenRouter) for a trade write-up, and emails an HTML
+stocks to Claude (Anthropic's native API) for a real-time trading decision, and emails an HTML
 report - only when there's something worth reporting.
 
 Runs unattended on a 15-minute cycle during NYSE regular hours, holiday-aware,
@@ -30,7 +30,7 @@ runner.py (or cron) --calls--> app.py:run_once()
                                      |
                           EnrichmentService.enrich()       (news + Fibonacci, changed stocks only)
                                      |
-                          ClaudeAnalyzer.analyze()         (OpenRouter, changed stocks only)
+                          ClaudeAnalyzer.analyze()         (Anthropic API, changed stocks only)
                                      |
                           ReportGenerator.generate()        (Jinja2 HTML)
                                      |
@@ -74,7 +74,7 @@ Create `.env` (git-ignored) with:
 
 ```
 FINVIZ_SCREENER_URL=<your saved Finviz Elite screener URL>
-OPENROUTER_API_KEY=<your OpenRouter key, sk-or-v1-...>
+CLAUDE_API_KEY=<your Anthropic API key, sk-ant-...>
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
 SMTP_USERNAME=<your email>
@@ -141,12 +141,12 @@ confidence, and news corroboration - rather than raw momentum score alone:
 ```bash
 pytest                       # full unit suite - free, fast, no live calls (default)
 pytest tests/test_x.py       # just one file - the default when you've changed something specific
-pytest -m integration        # deliberate opt-in only - hits real Claude/OpenRouter, yfinance, or Finviz
+pytest -m integration        # deliberate opt-in only - hits real Claude, yfinance, or Finviz
 ```
 
 All tests use hand-built fixtures/mocks - none require a live browser,
 network call, or real credentials, and plain `pytest` never touches
-OpenRouter, yfinance, or Finviz (enforced by `pytest.ini`'s
+Claude, yfinance, or Finviz (enforced by `pytest.ini`'s
 `addopts = -m "not integration"`; nothing is currently marked
 `@pytest.mark.integration` since no test makes a live call today).
 
@@ -159,7 +159,7 @@ and pytest's own import handling.
 ## Roadmap
 
 - ✅ Stage 1-5: Playwright login/scrape, config-driven scoring, change
-  detection, Claude analysis (via OpenRouter), HTML reports, email.
+  detection, Claude analysis (Anthropic's native API), HTML reports, email.
 - ✅ Stage 6: News corroboration (CORROBORATED/CONFLICTING/INCONCLUSIVE
   verdicts) and Fibonacci retracement levels enrich the Claude prompt and
   report for changed/top-ranked stocks.

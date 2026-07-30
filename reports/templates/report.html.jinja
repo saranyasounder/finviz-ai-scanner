@@ -13,58 +13,7 @@
   h2 { font-size: 15px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-secondary); border-bottom: 1px solid var(--border); padding-bottom: 6px; }
   h2.section-lead { color: var(--positive); }
   p { color: var(--text-secondary); font-size: 13px; }
-
-  .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
-  .badge-high { background: rgba(34, 197, 94, 0.15); color: var(--positive); }
-  .badge-medium { background: rgba(250, 204, 21, 0.15); color: var(--neutral); }
-  .badge-low { background: rgba(248, 113, 113, 0.15); color: var(--negative); }
-
-  /* Must-Watch: single-column, large text, minimal fields - built to be
-     skimmed on a phone in under 30 seconds. */
-  .must-watch-card { background: var(--bg-card); border: 1px solid var(--border); border-left: 4px solid var(--positive); border-radius: 8px; padding: 16px; margin-bottom: 14px; }
-  .mw-top { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
-  .mw-ticker { font-size: 22px; font-weight: 700; color: var(--text-primary); }
-  .mw-price { font-size: 18px; color: var(--text-primary); }
-  .mw-line { font-size: 14px; color: var(--text-secondary); margin: 4px 0; }
-  .mw-reason { font-size: 14px; color: var(--text-primary); margin-top: 8px; }
-
-  /* Per-candidate trade cards below - ticker + conviction score are the
-     primary read; AI reasoning is secondary; raw supporting data is
-     de-emphasized below a divider so it doesn't compete with the primary read. */
-  .trade-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 12px; }
-  .fa-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 10px; flex-wrap: wrap; }
-  .fa-ticker-block { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
-  .fa-ticker { font-size: 18px; font-weight: 700; color: var(--text-primary); }
-  .fa-company { font-size: 13px; color: var(--text-secondary); }
-  .fa-flag { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
-
-  .conviction { text-align: right; min-width: 64px; flex-shrink: 0; }
-  .conviction-score { font-size: 20px; font-weight: 700; }
-  .conviction-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.03em; color: var(--text-secondary); }
-  .conviction-bar { width: 64px; height: 4px; background: var(--border); border-radius: 2px; margin-top: 4px; overflow: hidden; }
-  .conviction-fill { height: 100%; border-radius: 2px; }
-  .tier-high .conviction-score { color: var(--positive); }
-  .tier-high .conviction-fill { background: var(--positive); }
-  .tier-medium .conviction-score { color: var(--neutral); }
-  .tier-medium .conviction-fill { background: var(--neutral); }
-  .tier-low .conviction-score { color: var(--negative); }
-  .tier-low .conviction-fill { background: var(--negative); }
-
-  .fa-reasoning { font-size: 14px; color: var(--text-primary); margin: 10px 0; }
-  .fa-levels { font-size: 13px; color: var(--text-primary); margin: 8px 0; }
-  .fa-levels strong { color: var(--text-secondary); font-weight: 600; }
-
-  .fa-support { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
-  .fa-support p { font-size: 12px; color: var(--text-secondary); margin: 4px 0; }
-  .news-row { font-size: 12px; color: var(--text-secondary); margin: 4px 0; }
-
   .risk-summary { font-size: 13px; color: var(--text-secondary); }
-
-  @media (max-width: 480px) {
-    .fa-top { flex-direction: column; align-items: flex-start; gap: 8px; }
-    .conviction { text-align: left; }
-    .conviction-bar { width: 100px; }
-  }
 </style>
 </head>
 <body>
@@ -77,87 +26,111 @@
   <p>{{ market_summary }}</p>
 </section>
 
+{#- Part 1: a responsive HTML table, one row per Must-Watch candidate.
+    Deliberately table-based with inline styles (not CSS Grid/Flexbox) for
+    maximum email-client compatibility - many clients strip <style> blocks
+    or ignore CSS custom properties, but reliably render inline style=""
+    attributes and plain <table> markup. The ticker column uses
+    position:sticky so it stays visible while scrolling horizontally on
+    small screens; renderers without sticky support just fall back to
+    normal static positioning (no JS, no separate fallback markup needed -
+    that's how position:sticky degrades). #}
 <section>
   <h2 class="section-lead">Must-Watch Now</h2>
-  {% for stock in must_watch %}
-  <div class="must-watch-card">
-    <div class="mw-top">
-      <span class="mw-ticker">{{ stock.ticker }}</span>
-      <span class="mw-price">${{ "%.2f"|format(stock.price) }}</span>
-    </div>
-    {% if stock.fibonacci and stock.fibonacci.nearest_support is not none %}
-    <div class="mw-line">Entry zone: ~${{ "%.2f"|format(stock.fibonacci.nearest_support) }}</div>
-    {% endif %}
-    {% if stock.analysis %}
-    <div class="mw-line">Stop: {{ stock.analysis.stop_loss }} &nbsp;&nbsp; Target: {{ stock.analysis.profit_target }}</div>
-    {% endif %}
-    <div class="mw-reason">{{ must_watch_reasons.get(stock.ticker, "") }}</div>
+  {% if must_watch %}
+  <div style="overflow-x: auto; max-width: 100%;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse: collapse; width: 100%; min-width: 560px; font-family: -apple-system, Segoe UI, Arial, sans-serif; font-size: 14px; background-color: #0a0e14; color: #f5f7fa;">
+    <thead>
+      <tr>
+        <th style="position: sticky; left: 0; background-color: #141a24; color: #828ea0; text-align: left; padding: 10px 12px; border-bottom: 1px solid #232c3a; font-size: 12px; text-transform: uppercase;">Ticker</th>
+        <th style="background-color: #141a24; color: #828ea0; text-align: left; padding: 10px 12px; border-bottom: 1px solid #232c3a; font-size: 12px; text-transform: uppercase;">Action</th>
+        <th style="background-color: #141a24; color: #828ea0; text-align: left; padding: 10px 12px; border-bottom: 1px solid #232c3a; font-size: 12px; text-transform: uppercase;">Entry Zone</th>
+        <th style="background-color: #141a24; color: #828ea0; text-align: left; padding: 10px 12px; border-bottom: 1px solid #232c3a; font-size: 12px; text-transform: uppercase;">Stop</th>
+        <th style="background-color: #141a24; color: #828ea0; text-align: left; padding: 10px 12px; border-bottom: 1px solid #232c3a; font-size: 12px; text-transform: uppercase;">Target</th>
+        <th style="background-color: #141a24; color: #828ea0; text-align: left; padding: 10px 12px; border-bottom: 1px solid #232c3a; font-size: 12px; text-transform: uppercase;">Confidence</th>
+        <th style="background-color: #141a24; color: #828ea0; text-align: left; padding: 10px 12px; border-bottom: 1px solid #232c3a; font-size: 12px; text-transform: uppercase;">News</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for stock in must_watch %}
+      {% set a = stock.analysis %}
+      <tr>
+        <td style="position: sticky; left: 0; background-color: #141a24; font-weight: 700; padding: 10px 12px; border-bottom: 1px solid #1b2030; white-space: nowrap;">{{ stock.ticker }}</td>
+        {% if a %}
+        <td style="padding: 10px 12px; border-bottom: 1px solid #1b2030; white-space: nowrap;">
+          <span style="display: inline-block; padding: 3px 10px; border-radius: 4px; font-weight: 700; font-size: 12px; color: #0a0e14; background-color: {% if a.action.value == 'ENTER_NOW' %}#22c55e{% elif a.action.value == 'WAIT_FOR_PULLBACK' %}#facc15{% else %}#f87171{% endif %};">{{ a.action.value.replace('_', ' ') }}</span>
+        </td>
+        <td style="padding: 10px 12px; border-bottom: 1px solid #1b2030; white-space: nowrap;">{{ "%.2f"|format(a.entry_zone.low) }} - {{ "%.2f"|format(a.entry_zone.high) }}</td>
+        <td style="padding: 10px 12px; border-bottom: 1px solid #1b2030; white-space: nowrap;">{{ "%.2f"|format(a.stop_loss) }}</td>
+        <td style="padding: 10px 12px; border-bottom: 1px solid #1b2030; white-space: nowrap;">{{ "%.2f"|format(a.target.price) }}</td>
+        <td style="padding: 10px 12px; border-bottom: 1px solid #1b2030; white-space: nowrap;">{{ a.confidence.score }} ({{ a.confidence.grade.value }})</td>
+        <td style="padding: 10px 12px; border-bottom: 1px solid #1b2030; white-space: nowrap;">
+          <span style="display: inline-block; padding: 3px 10px; border-radius: 4px; font-weight: 700; font-size: 12px; color: #0a0e14; background-color: {% if a.news_alignment.value == 'CORROBORATED' %}#22c55e{% elif a.news_alignment.value == 'INCONCLUSIVE' %}#facc15{% elif a.news_alignment.value == 'CONFLICTING' %}#f87171{% else %}#5a6472{% endif %};">{{ a.news_alignment.value }}</span>
+        </td>
+        {% else %}
+        <td style="padding: 10px 12px; border-bottom: 1px solid #1b2030; color: #828ea0;" colspan="6">No AI decision this scan</td>
+        {% endif %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
   </div>
   {% else %}
   <p>No must-watch candidates this scan.</p>
-  {% endfor %}
+  {% endif %}
 </section>
 
+{#- Part 2: one alert card per ranked candidate. Table-based, inline-styled,
+    single column, 16px+ body text - phone-first, same constraints as
+    above. The action badge is the largest single element on the card by
+    design (20px vs. 16px body text), since it's the one thing meant to be
+    readable at a glance. #}
 <section>
-  <h2>Full Analysis</h2>
+  <h2>Trade Alerts</h2>
+  {% if full_analysis %}
   {% for stock in full_analysis %}
-  {% set c = conviction[stock.ticker] %}
-  <div class="trade-card">
-    <div class="fa-top">
-      <div>
-        <div class="fa-ticker-block">
-          <span class="fa-ticker">{{ stock.ticker }}</span>
-          <span class="fa-company">{{ stock.company }}</span>
-        </div>
-        {% if change_reasons.get(stock.ticker) %}
-        <div class="fa-flag">{{ change_reasons[stock.ticker] }}</div>
-        {% endif %}
-      </div>
-      <div class="conviction tier-{{ c.tier }}">
-        <div class="conviction-score">{{ "%.0f"|format(c.score) }}</div>
-        <div class="conviction-label">Conviction</div>
-        <div class="conviction-bar"><div class="conviction-fill" style="width: {{ c.pct }}%;"></div></div>
-      </div>
-    </div>
-
-    {% if stock.analysis %}
-    <span class="badge {% if stock.analysis.confidence == 'High' %}badge-high{% elif stock.analysis.confidence == 'Medium' %}badge-medium{% else %}badge-low{% endif %}">
-      {{ stock.analysis.confidence }} confidence - Grade {{ stock.analysis.trade_quality }}
-    </span>
-    <p class="fa-reasoning">{{ stock.analysis.reasoning }}</p>
-    <p class="fa-levels"><strong>Entry:</strong> {{ stock.analysis.entry }} &nbsp; <strong>Stop:</strong> {{ stock.analysis.stop_loss }} &nbsp; <strong>Target:</strong> {{ stock.analysis.profit_target }}</p>
+  {% set a = stock.analysis %}
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse: collapse; width: 100%; max-width: 100%; background-color: #141a24; border: 1px solid #232c3a; border-radius: 8px; margin-bottom: 12px; font-family: -apple-system, Segoe UI, Arial, sans-serif;">
+    <tr>
+      <td style="padding: 16px 16px 8px 16px; font-size: 18px; font-weight: 700; color: #f5f7fa;">
+        {{ stock.ticker }} <span style="font-size: 13px; color: #828ea0; font-weight: 400;">{{ stock.company }}</span>
+      </td>
+    </tr>
+    {% if a %}
+    <tr>
+      <td style="padding: 0 16px 12px 16px;">
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse: collapse;">
+          <tr>
+            <td style="background-color: {% if a.action.value == 'ENTER_NOW' %}#22c55e{% elif a.action.value == 'WAIT_FOR_PULLBACK' %}#facc15{% else %}#f87171{% endif %}; color: #0a0e14; font-size: 20px; font-weight: 800; padding: 10px 20px; border-radius: 6px;">{{ a.action.value.replace('_', ' ') }}</td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding: 0 16px 6px 16px; font-size: 16px; color: #f5f7fa;"><span style="color: #828ea0;">Confidence:</span> {{ a.confidence.score }}/100 ({{ a.confidence.grade.value }})</td>
+    </tr>
+    <tr>
+      <td style="padding: 0 16px 6px 16px; font-size: 16px; color: #f5f7fa;"><span style="color: #828ea0;">Entry:</span> {{ "%.2f"|format(a.entry_zone.low) }} - {{ "%.2f"|format(a.entry_zone.high) }}</td>
+    </tr>
+    <tr>
+      <td style="padding: 0 16px 6px 16px; font-size: 16px; color: #f5f7fa;"><span style="color: #828ea0;">Stop:</span> {{ "%.2f"|format(a.stop_loss) }}</td>
+    </tr>
+    <tr>
+      <td style="padding: 0 16px 6px 16px; font-size: 16px; color: #f5f7fa;"><span style="color: #828ea0;">Target:</span> {{ "%.2f"|format(a.target.price) }} ({{ a.target.risk_reward }})</td>
+    </tr>
+    <tr>
+      <td style="padding: 8px 16px 16px 16px; font-size: 16px; color: #f5f7fa;">{{ a.reasoning }}</td>
+    </tr>
     {% else %}
-    <p class="fa-reasoning">Analysis unavailable for this stock.</p>
+    <tr>
+      <td style="padding: 0 16px 16px 16px; font-size: 16px; color: #828ea0;">Analysis unavailable for this stock.</td>
+    </tr>
     {% endif %}
-
-    {% if stock.analysis or stock.fibonacci or stock.news_items %}
-    <div class="fa-support">
-      {% if stock.analysis %}
-      <p><strong>Risk:</strong> {{ stock.analysis.risk }}</p>
-      {% endif %}
-      {% if stock.fibonacci %}
-      <p>
-        Fibonacci: Swing High {{ "%.2f"|format(stock.fibonacci.swing_high) }} / Swing Low {{ "%.2f"|format(stock.fibonacci.swing_low) }}
-        {%- if stock.fibonacci.nearest_support is not none %} / Nearest Support {{ "%.2f"|format(stock.fibonacci.nearest_support) }}{%- endif %}
-        ({{ stock.fibonacci.trend.value }})
-      </p>
-      {% endif %}
-      {% if stock.news_items %}
-      {% for item, validation in zip(stock.news_items, stock.news_validations) %}
-      <p class="news-row">
-        <span class="badge {% if validation.verdict.value == 'corroborated' %}badge-high{% elif validation.verdict.value == 'conflicting' %}badge-low{% else %}badge-medium{% endif %}">
-          {{ validation.verdict.value }}
-        </span>
-        "{{ item.headline }}"{% if item.source %} ({{ item.source }}){% endif %}
-      </p>
-      {% endfor %}
-      {% endif %}
-    </div>
-    {% endif %}
-  </div>
+  </table>
+  {% endfor %}
   {% else %}
   <p>No trade ideas generated this scan.</p>
-  {% endfor %}
+  {% endif %}
 </section>
 
 <section>

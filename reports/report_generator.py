@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import re
 from datetime import datetime
 from pathlib import Path
 
@@ -12,30 +11,25 @@ from models.stock_candidate import StockCandidate
 
 TEMPLATE_DIR = Path(__file__).resolve().parent / "templates"
 
-_FIRST_SENTENCE = re.compile(r"(.+?\.)(\s|$)")
-
 
 class ReportGenerator:
-    """Renders the two-part HTML report: Must-Watch (compact, top N by
-    conviction) and Full Analysis (every ranked candidate, full detail,
-    conviction score as the primary scannable signal). `analyzed` is expected
-    to already be ordered by the caller (conviction score, highest first) -
-    this class renders in whatever order it's given, it doesn't rank."""
+    """Renders the two-part HTML report: Part 1 is a compact table (one row
+    per Must-Watch candidate - ticker, action, entry zone, stop, target,
+    confidence, news alignment); Part 2 is one alert card per ranked
+    candidate (action badge as the dominant visual element, confidence,
+    entry/stop/target, reasoning). `analyzed` is expected to already be
+    ordered by the caller (conviction score, highest first) - this class
+    renders in whatever order it's given, it doesn't rank. ConvictionScorer
+    is used only for must_watch_top_n here; the blended conviction score
+    itself is not displayed - the schema's own confidence.score/grade is
+    the visible signal now."""
 
-    def __init__(
-        self,
-        conviction_scorer: ConvictionScorer,
-        conviction_bucket_high: float,
-        conviction_bucket_medium: float,
-    ):
+    def __init__(self, conviction_scorer: ConvictionScorer):
         self.conviction_scorer = conviction_scorer
-        self.conviction_bucket_high = conviction_bucket_high
-        self.conviction_bucket_medium = conviction_bucket_medium
         self._env = Environment(
             loader=FileSystemLoader(str(TEMPLATE_DIR)),
             autoescape=select_autoescape(["html", "jinja"]),
         )
-        self._env.globals["zip"] = zip
 
     def generate(
         self,
@@ -43,15 +37,7 @@ class ReportGenerator:
         events: list[ChangeEvent],
         analyzed: list[StockCandidate],
     ) -> str:
-        reason_lists: dict[str, list[str]] = {}
-        for event in events:
-            reason_lists.setdefault(event.ticker, []).append(event.description)
-        change_reasons = {t: " ".join(msgs) for t, msgs in reason_lists.items()}
-
         must_watch = analyzed[: self.conviction_scorer.must_watch_top_n]
-        must_watch_reasons = {s.ticker: self._one_line_reason(s) for s in must_watch}
-
-        conviction = {s.ticker: self._conviction_context(s) for s in analyzed}
 
         template = self._env.get_template("report.html.jinja")
 
@@ -59,33 +45,9 @@ class ReportGenerator:
             generated_at=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             market_summary=self._build_market_summary(current, events),
             must_watch=must_watch,
-            must_watch_reasons=must_watch_reasons,
             full_analysis=analyzed,
-            change_reasons=change_reasons,
-            conviction=conviction,
             risk_summary=self._build_risk_summary(current),
         )
-
-    def _conviction_context(self, stock: StockCandidate) -> dict:
-        score = self.conviction_scorer.score(stock)
-
-        if score >= self.conviction_bucket_high:
-            tier = "high"
-        elif score >= self.conviction_bucket_medium:
-            tier = "medium"
-        else:
-            tier = "low"
-
-        return {"score": score, "tier": tier, "pct": max(0.0, min(100.0, score))}
-
-    @staticmethod
-    def _one_line_reason(stock: StockCandidate) -> str:
-        if stock.analysis is None:
-            return "Momentum candidate - AI analysis unavailable this scan."
-
-        reasoning = stock.analysis.reasoning.strip()
-        match = _FIRST_SENTENCE.match(reasoning)
-        return match.group(1) if match else reasoning
 
     def _build_market_summary(
         self, current: list[StockCandidate], events: list[ChangeEvent]

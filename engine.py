@@ -102,11 +102,7 @@ class TradingEngine:
             ),
             conviction_scorer=conviction_scorer,
             outcome_tracker=outcome_tracker,
-            report_generator=ReportGenerator(
-                conviction_scorer,
-                settings.outcome_tracking.conviction_bucket_high,
-                settings.outcome_tracking.conviction_bucket_medium,
-            ),
+            report_generator=ReportGenerator(conviction_scorer),
             email_service=EmailService(settings.email),
             top_n=settings.snapshots.top_n,
         )
@@ -151,14 +147,10 @@ class TradingEngine:
                 f"{len(scored)} stock(s); analyzing the Top {len(top_stocks)} for "
                 f"the first report."
             )
-            change_reasons = {
-                s.ticker: "Initial scan baseline candidate." for s in top_stocks
-            }
             self._analyze_report_and_email(
                 scored=scored,
                 events=[],
                 candidates=top_stocks,
-                change_reasons=change_reasons,
                 subject="Initial scan - baseline established",
             )
             self.snapshot_manager.save(scored)
@@ -171,13 +163,12 @@ class TradingEngine:
             self.snapshot_manager.save(scored)
             return
 
-        changed_stocks, change_reasons = self._select_changed(scored, events)
+        changed_stocks = self._select_changed(scored, events)
 
         self._analyze_report_and_email(
             scored=scored,
             events=events,
             candidates=changed_stocks,
-            change_reasons=change_reasons,
             subject=f"{len(events)} change(s) detected",
         )
 
@@ -188,7 +179,6 @@ class TradingEngine:
         scored,
         events,
         candidates,
-        change_reasons,
         subject: str,
     ) -> None:
         try:
@@ -197,7 +187,7 @@ class TradingEngine:
             logger.error(f"Enrichment step failed, continuing without it: {exc}")
 
         try:
-            analyzed = self.claude_analyzer.analyze(candidates, change_reasons)
+            analyzed = self.claude_analyzer.analyze(candidates)
         except Exception as exc:
             logger.error(f"Claude analysis step failed: {exc}")
             analyzed = candidates
@@ -257,20 +247,14 @@ class TradingEngine:
     @staticmethod
     def _select_changed(scored, events):
         """Stocks worth sending to Claude: everything except tickers whose only
-        change was leaving the Top N (they don't need a fresh 'why it ranks' write-up).
-        """
+        change was leaving the Top N (they don't need a fresh decision re-run)."""
 
         by_ticker = {s.ticker: s for s in scored}
 
-        reason_lists: dict[str, list[str]] = {}
-        analysis_worthy: set[str] = set()
+        analysis_worthy = {
+            event.ticker
+            for event in events
+            if event.change_type != ChangeType.LEFT_TOP_N
+        }
 
-        for event in events:
-            reason_lists.setdefault(event.ticker, []).append(event.description)
-            if event.change_type != ChangeType.LEFT_TOP_N:
-                analysis_worthy.add(event.ticker)
-
-        changed_stocks = [by_ticker[t] for t in analysis_worthy if t in by_ticker]
-        change_reasons = {t: " ".join(msgs) for t, msgs in reason_lists.items()}
-
-        return changed_stocks, change_reasons
+        return [by_ticker[t] for t in analysis_worthy if t in by_ticker]

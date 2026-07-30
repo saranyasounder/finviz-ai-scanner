@@ -1,27 +1,71 @@
 from __future__ import annotations
 
-from typing import Optional
+from enum import Enum
 
 from pydantic import BaseModel
 
 
+class TradeAction(str, Enum):
+    """The one decision this pipeline exists to answer: what to do RIGHT NOW."""
+
+    ENTER_NOW = "ENTER_NOW"
+    WAIT_FOR_PULLBACK = "WAIT_FOR_PULLBACK"
+    ALREADY_EXTENDED = "ALREADY_EXTENDED"
+    AVOID = "AVOID"
+
+
+class AnchorType(str, Enum):
+    FIBONACCI_SUPPORT = "FIBONACCI_SUPPORT"
+    ESTIMATED = "ESTIMATED"
+
+
+class ConfidenceGrade(str, Enum):
+    HIGH = "HIGH"
+    MEDIUM = "MEDIUM"
+    LOW = "LOW"
+
+
+class NewsAlignment(str, Enum):
+    CORROBORATED = "CORROBORATED"
+    CONFLICTING = "CONFLICTING"
+    INCONCLUSIVE = "INCONCLUSIVE"
+    NONE = "NONE"
+
+
+class EntryZone(BaseModel):
+    low: float
+    high: float
+    anchor_type: AnchorType
+    anchor_price: float
+
+
+class Target(BaseModel):
+    price: float
+    risk_reward: str
+    basis: str
+
+
+class Confidence(BaseModel):
+    score: int
+    grade: ConfidenceGrade
+
+
 class ClaudeAnalysis(BaseModel):
-    """Claude's trade write-up for a single changed/top-ranked stock.
+    """A single real-time intraday trading decision for one candidate,
+    re-evaluated every 15-minute cycle - not investment research. Every
+    field is mandatory (no Optional/None anywhere): the system prompt
+    requires the model to never omit or null a field, and strict Pydantic
+    validation here is what actually enforces that - a response missing a
+    field raises and is caught/logged upstream like any other analysis
+    failure, rather than silently accepting a malformed decision."""
 
-    entry/stop_loss/profit_target stay free text for human-readable emails
-    (Claude may qualify them, e.g. "190 near support"); the *_price fields are
-    the numeric counterparts needed for quantitative outcome tracking. Claude
-    is asked for both; the numeric ones are optional since a model response
-    can omit or malform them."""
-
+    action: TradeAction
+    entry_zone: EntryZone
+    stop_loss: float
+    target: Target
+    risk_per_share: float
+    invalidation: str
+    time_horizon: str
+    confidence: Confidence
+    news_alignment: NewsAlignment
     reasoning: str
-    risk: str
-    entry: str
-    stop_loss: str
-    profit_target: str
-    confidence: str
-    trade_quality: str
-
-    entry_price: Optional[float] = None
-    stop_loss_price: Optional[float] = None
-    profit_target_price: Optional[float] = None
