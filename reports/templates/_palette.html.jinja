@@ -1,0 +1,25 @@
+{#- Shared dark-mode palette. Semantic colors mean the same thing everywhere
+    they're used: green = bullish/positive/corroborated, red = bearish/
+    negative/conflicting, amber = neutral/inconclusive/caution. No other
+    accent colors exist beyond this + the neutral base/text/border set.
+
+    All text-color pairs verified against WCAG relative-luminance contrast
+    (>=4.5:1, AA) against BOTH --bg-base and --bg-card:
+      text-primary   18.0:1 / 16.3:1
+      text-secondary  5.8:1 /  5.3:1
+      positive        8.5:1 /  7.7:1
+      negative        7.0:1 /  6.3:1
+      neutral        12.6:1 / 11.4:1
+#}
+<style>
+  :root {
+    --bg-base: #0a0e14;
+    --bg-card: #141a24;
+    --border: #232c3a;
+    --text-primary: #f5f7fa;
+    --text-secondary: #828ea0;
+    --positive: #22c55e;
+    --negative: #f87171;
+    --neutral: #facc15;
+  }
+</style>

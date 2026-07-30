@@ -1,15 +1,16 @@
 {#- Shared styling for the .data-table macro (_data_table.html.jinja). Kept in
     one place so future table/responsive changes only need updating here. #}
+{% include "_palette.html.jinja" %}
 <style>
   .data-table { width: 100%; border-collapse: collapse; font-size: 15px; }
-  .data-table th, .data-table td { text-align: left; padding: 10px 12px; border-bottom: 1px solid #1b2030; }
-  .data-table th { color: #9aa4b2; font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: 0.03em; }
+  .data-table th, .data-table td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--border); }
+  .data-table th { color: var(--text-secondary); font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: 0.03em; }
 
   @media (max-width: 480px) {
     .data-table thead { display: none; }
     .data-table, .data-table tbody, .data-table tr, .data-table td { display: block; width: 100%; box-sizing: border-box; }
-    .data-table tr { margin-bottom: 12px; border: 1px solid #232838; border-radius: 8px; padding: 4px 0; background: #131826; }
-    .data-table td { text-align: right; padding: 10px 14px 10px 50%; border-bottom: 1px solid #1b2030; position: relative; font-size: 16px; }
+    .data-table tr { margin-bottom: 12px; border: 1px solid var(--border); border-radius: 8px; padding: 4px 0; background: var(--bg-card); }
+    .data-table td { text-align: right; padding: 10px 14px 10px 50%; border-bottom: 1px solid var(--border); position: relative; font-size: 16px; }
     .data-table td:last-child { border-bottom: none; }
     .data-table td::before {
       content: attr(data-label);
@@ -18,7 +19,7 @@
       width: 44%;
       text-align: left;
       font-weight: 600;
-      color: #9aa4b2;
+      color: var(--text-secondary);
     }
   }
 </style>

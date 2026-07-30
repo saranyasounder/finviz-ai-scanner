@@ -4,36 +4,67 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Finviz AI Scanner Report - {{ generated_at }}</title>
+{% include "_palette.html.jinja" %}
 <style>
-  body { font-family: -apple-system, Segoe UI, Arial, sans-serif; background: #0b0e14; color: #e6e6e6; margin: 0; padding: 24px; max-width: 640px; }
-  h1 { font-size: 20px; margin-bottom: 4px; }
-  .timestamp { color: #9aa4b2; font-size: 13px; margin-bottom: 24px; }
+  body { font-family: -apple-system, Segoe UI, Arial, sans-serif; background: var(--bg-base); color: var(--text-primary); margin: 0; padding: 24px; max-width: 640px; }
+  h1 { font-size: 20px; margin-bottom: 4px; color: var(--text-primary); }
+  .timestamp { color: var(--text-secondary); font-size: 13px; margin-bottom: 24px; }
   section { margin-bottom: 32px; }
-  h2 { font-size: 15px; text-transform: uppercase; letter-spacing: 0.04em; color: #9aa4b2; border-bottom: 1px solid #232838; padding-bottom: 6px; }
-  h2.section-lead { color: #4ade80; }
-  table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #1b2030; }
-  th { color: #9aa4b2; font-weight: 600; }
-  .score { font-weight: 700; }
+  h2 { font-size: 15px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-secondary); border-bottom: 1px solid var(--border); padding-bottom: 6px; }
+  h2.section-lead { color: var(--positive); }
+  p { color: var(--text-secondary); font-size: 13px; }
+
   .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
-  .badge-high { background: #163a2b; color: #4ade80; }
-  .badge-medium { background: #3a2f16; color: #facc15; }
-  .badge-low { background: #3a1620; color: #f87171; }
-  .trade-card { background: #131826; border: 1px solid #232838; border-radius: 8px; padding: 14px 16px; margin-bottom: 12px; }
-  .trade-card h3 { margin: 0 0 6px 0; font-size: 14px; }
-  .trade-card p { margin: 4px 0; font-size: 13px; color: #c7cdd6; }
-  .risk-summary { font-size: 13px; color: #c7cdd6; }
-  .news-list { margin-top: 8px; }
-  .news-row { font-size: 12px; color: #9aa4b2; margin: 4px 0; }
+  .badge-high { background: rgba(34, 197, 94, 0.15); color: var(--positive); }
+  .badge-medium { background: rgba(250, 204, 21, 0.15); color: var(--neutral); }
+  .badge-low { background: rgba(248, 113, 113, 0.15); color: var(--negative); }
 
   /* Must-Watch: single-column, large text, minimal fields - built to be
      skimmed on a phone in under 30 seconds. */
-  .must-watch-card { background: #131826; border: 1px solid #234a2f; border-left: 4px solid #4ade80; border-radius: 8px; padding: 16px; margin-bottom: 14px; }
+  .must-watch-card { background: var(--bg-card); border: 1px solid var(--border); border-left: 4px solid var(--positive); border-radius: 8px; padding: 16px; margin-bottom: 14px; }
   .mw-top { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
-  .mw-ticker { font-size: 22px; font-weight: 700; }
-  .mw-price { font-size: 18px; color: #c7cdd6; }
-  .mw-line { font-size: 14px; color: #c7cdd6; margin: 4px 0; }
-  .mw-reason { font-size: 14px; color: #e6e6e6; margin-top: 8px; }
+  .mw-ticker { font-size: 22px; font-weight: 700; color: var(--text-primary); }
+  .mw-price { font-size: 18px; color: var(--text-primary); }
+  .mw-line { font-size: 14px; color: var(--text-secondary); margin: 4px 0; }
+  .mw-reason { font-size: 14px; color: var(--text-primary); margin-top: 8px; }
+
+  /* Per-candidate trade cards below - ticker + conviction score are the
+     primary read; AI reasoning is secondary; raw supporting data is
+     de-emphasized below a divider so it doesn't compete with the primary read. */
+  .trade-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 12px; }
+  .fa-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 10px; flex-wrap: wrap; }
+  .fa-ticker-block { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+  .fa-ticker { font-size: 18px; font-weight: 700; color: var(--text-primary); }
+  .fa-company { font-size: 13px; color: var(--text-secondary); }
+  .fa-flag { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
+
+  .conviction { text-align: right; min-width: 64px; flex-shrink: 0; }
+  .conviction-score { font-size: 20px; font-weight: 700; }
+  .conviction-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.03em; color: var(--text-secondary); }
+  .conviction-bar { width: 64px; height: 4px; background: var(--border); border-radius: 2px; margin-top: 4px; overflow: hidden; }
+  .conviction-fill { height: 100%; border-radius: 2px; }
+  .tier-high .conviction-score { color: var(--positive); }
+  .tier-high .conviction-fill { background: var(--positive); }
+  .tier-medium .conviction-score { color: var(--neutral); }
+  .tier-medium .conviction-fill { background: var(--neutral); }
+  .tier-low .conviction-score { color: var(--negative); }
+  .tier-low .conviction-fill { background: var(--negative); }
+
+  .fa-reasoning { font-size: 14px; color: var(--text-primary); margin: 10px 0; }
+  .fa-levels { font-size: 13px; color: var(--text-primary); margin: 8px 0; }
+  .fa-levels strong { color: var(--text-secondary); font-weight: 600; }
+
+  .fa-support { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
+  .fa-support p { font-size: 12px; color: var(--text-secondary); margin: 4px 0; }
+  .news-row { font-size: 12px; color: var(--text-secondary); margin: 4px 0; }
+
+  .risk-summary { font-size: 13px; color: var(--text-secondary); }
+
+  @media (max-width: 480px) {
+    .fa-top { flex-direction: column; align-items: flex-start; gap: 8px; }
+    .conviction { text-align: left; }
+    .conviction-bar { width: 100px; }
+  }
 </style>
 </head>
 <body>
@@ -68,93 +99,50 @@
 </section>
 
 <section>
-  <h2>New Candidates ({{ new_candidates|length }})</h2>
-  {% if new_candidates %}
-  <table>
-    <tr><th>Ticker</th><th>Score</th><th>Price</th><th>Gap %</th><th>Rel. Vol</th></tr>
-    {% for stock in new_candidates %}
-    <tr>
-      <td>{{ stock.ticker }}</td>
-      <td class="score">{{ "%.1f"|format(stock.score) }}</td>
-      <td>{{ stock.price }}</td>
-      <td>{{ stock.gap }}</td>
-      <td>{{ stock.relative_volume }}</td>
-    </tr>
-    {% endfor %}
-  </table>
-  {% else %}
-  <p>No new candidates this scan.</p>
-  {% endif %}
-</section>
-
-<section>
-  <h2>Updated Candidates ({{ updated_candidates|length }})</h2>
-  {% if updated_candidates %}
-  <table>
-    <tr><th>Ticker</th><th>Score</th><th>Price</th><th>Gap %</th><th>Rel. Vol</th><th>Why it changed</th></tr>
-    {% for stock in updated_candidates %}
-    <tr>
-      <td>{{ stock.ticker }}</td>
-      <td class="score">{{ "%.1f"|format(stock.score) }}</td>
-      <td>{{ stock.price }}</td>
-      <td>{{ stock.gap }}</td>
-      <td>{{ stock.relative_volume }}</td>
-      <td>{{ change_reasons.get(stock.ticker, "") }}</td>
-    </tr>
-    {% endfor %}
-  </table>
-  {% else %}
-  <p>No updated candidates this scan.</p>
-  {% endif %}
-</section>
-
-<section>
-  <h2>Top Ranked Stocks</h2>
-  <table>
-    <tr><th>#</th><th>Ticker</th><th>Company</th><th>Score</th><th>Price</th><th>Sector</th></tr>
-    {% for stock in top_ranked %}
-    <tr>
-      <td>{{ loop.index }}</td>
-      <td>{{ stock.ticker }}</td>
-      <td>{{ stock.company }}</td>
-      <td class="score">{{ "%.1f"|format(stock.score) }}</td>
-      <td>{{ stock.price }}</td>
-      <td>{{ stock.sector }}</td>
-    </tr>
-    {% endfor %}
-  </table>
-</section>
-
-<section>
   <h2>Full Analysis</h2>
   {% for stock in full_analysis %}
+  {% set c = conviction[stock.ticker] %}
   <div class="trade-card">
-    <h3>{{ stock.ticker }} - {{ stock.company }}
-      {% if stock.analysis %}
-      <span class="badge {% if stock.analysis.confidence == 'High' %}badge-high{% elif stock.analysis.confidence == 'Medium' %}badge-medium{% else %}badge-low{% endif %}">
-        {{ stock.analysis.confidence }} confidence - Grade {{ stock.analysis.trade_quality }}
-      </span>
-      {% endif %}
-    </h3>
+    <div class="fa-top">
+      <div>
+        <div class="fa-ticker-block">
+          <span class="fa-ticker">{{ stock.ticker }}</span>
+          <span class="fa-company">{{ stock.company }}</span>
+        </div>
+        {% if change_reasons.get(stock.ticker) %}
+        <div class="fa-flag">{{ change_reasons[stock.ticker] }}</div>
+        {% endif %}
+      </div>
+      <div class="conviction tier-{{ c.tier }}">
+        <div class="conviction-score">{{ "%.0f"|format(c.score) }}</div>
+        <div class="conviction-label">Conviction</div>
+        <div class="conviction-bar"><div class="conviction-fill" style="width: {{ c.pct }}%;"></div></div>
+      </div>
+    </div>
+
     {% if stock.analysis %}
-    <p><strong>Why:</strong> {{ stock.analysis.reasoning }}</p>
-    <p><strong>Entry:</strong> {{ stock.analysis.entry }} &nbsp; <strong>Stop:</strong> {{ stock.analysis.stop_loss }} &nbsp; <strong>Target:</strong> {{ stock.analysis.profit_target }}</p>
-    <p><strong>Risk:</strong> {{ stock.analysis.risk }}</p>
+    <span class="badge {% if stock.analysis.confidence == 'High' %}badge-high{% elif stock.analysis.confidence == 'Medium' %}badge-medium{% else %}badge-low{% endif %}">
+      {{ stock.analysis.confidence }} confidence - Grade {{ stock.analysis.trade_quality }}
+    </span>
+    <p class="fa-reasoning">{{ stock.analysis.reasoning }}</p>
+    <p class="fa-levels"><strong>Entry:</strong> {{ stock.analysis.entry }} &nbsp; <strong>Stop:</strong> {{ stock.analysis.stop_loss }} &nbsp; <strong>Target:</strong> {{ stock.analysis.profit_target }}</p>
     {% else %}
-    <p>Analysis unavailable for this stock.</p>
+    <p class="fa-reasoning">Analysis unavailable for this stock.</p>
     {% endif %}
-    {% if stock.fibonacci %}
-    <p><strong>Entry Zone (Fibonacci):</strong>
-      Swing High {{ "%.2f"|format(stock.fibonacci.swing_high) }} /
-      Swing Low {{ "%.2f"|format(stock.fibonacci.swing_low) }}
-      {%- if stock.fibonacci.nearest_support is not none %}
-      / Nearest Support {{ "%.2f"|format(stock.fibonacci.nearest_support) }}
-      {%- endif %}
-      ({{ stock.fibonacci.trend.value }})
-    </p>
-    {% endif %}
-    {% if stock.news_items %}
-    <div class="news-list">
+
+    {% if stock.analysis or stock.fibonacci or stock.news_items %}
+    <div class="fa-support">
+      {% if stock.analysis %}
+      <p><strong>Risk:</strong> {{ stock.analysis.risk }}</p>
+      {% endif %}
+      {% if stock.fibonacci %}
+      <p>
+        Fibonacci: Swing High {{ "%.2f"|format(stock.fibonacci.swing_high) }} / Swing Low {{ "%.2f"|format(stock.fibonacci.swing_low) }}
+        {%- if stock.fibonacci.nearest_support is not none %} / Nearest Support {{ "%.2f"|format(stock.fibonacci.nearest_support) }}{%- endif %}
+        ({{ stock.fibonacci.trend.value }})
+      </p>
+      {% endif %}
+      {% if stock.news_items %}
       {% for item, validation in zip(stock.news_items, stock.news_validations) %}
       <p class="news-row">
         <span class="badge {% if validation.verdict.value == 'corroborated' %}badge-high{% elif validation.verdict.value == 'conflicting' %}badge-low{% else %}badge-medium{% endif %}">
@@ -163,6 +151,7 @@
         "{{ item.headline }}"{% if item.source %} ({{ item.source }}){% endif %}
       </p>
       {% endfor %}
+      {% endif %}
     </div>
     {% endif %}
   </div>

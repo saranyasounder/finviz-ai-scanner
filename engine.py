@@ -103,7 +103,9 @@ class TradingEngine:
             conviction_scorer=conviction_scorer,
             outcome_tracker=outcome_tracker,
             report_generator=ReportGenerator(
-                settings.snapshots.top_n, conviction_scorer.must_watch_top_n
+                conviction_scorer,
+                settings.outcome_tracking.conviction_bucket_high,
+                settings.outcome_tracking.conviction_bucket_medium,
             ),
             email_service=EmailService(settings.email),
             top_n=settings.snapshots.top_n,

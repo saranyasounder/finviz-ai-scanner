@@ -1,10 +1,14 @@
 from datetime import datetime
+from pathlib import Path
 
+from analysis.conviction_scorer import ConvictionScorer
 from models.change_event import ChangeEvent, ChangeType
 from models.claude_analysis import ClaudeAnalysis
 from models.fibonacci_levels import FibonacciLevels, TrendDirection
 from models.stock_candidate import StockCandidate
 from reports.report_generator import ReportGenerator
+
+RANKING_CONFIG_PATH = Path(__file__).resolve().parent.parent / "config" / "ranking.yaml"
 
 
 def _stock(
@@ -40,58 +44,19 @@ def _event(
     )
 
 
-def test_new_candidate_appears_in_new_section_not_updated():
-    generator = ReportGenerator(top_n=10, must_watch_top_n=5)
-    stock = _stock("AAA", score=50)
-
-    html = generator.generate(
-        current=[stock], events=[_event("AAA", ChangeType.NEW)], analyzed=[]
-    )
-
-    assert "AAA" in html
-    assert "New Candidates (1)" in html
-    assert "Updated Candidates (0)" in html
-
-
-def test_score_change_appears_in_updated_section():
-    generator = ReportGenerator(top_n=10, must_watch_top_n=5)
-    stock = _stock("BBB", score=60)
-
-    html = generator.generate(
-        current=[stock],
-        events=[_event("BBB", ChangeType.SCORE_CHANGE)],
-        analyzed=[],
-    )
-
-    assert "New Candidates (0)" in html
-    assert "Updated Candidates (1)" in html
-
-
-def test_no_events_yields_empty_new_and_updated_sections():
-    generator = ReportGenerator(top_n=10, must_watch_top_n=5)
-    stock = _stock("CCC", score=40)
-
-    html = generator.generate(current=[stock], events=[], analyzed=[])
-
-    assert "New Candidates (0)" in html
-    assert "Updated Candidates (0)" in html
-    assert "No new candidates this scan." in html
-
-
-def test_top_ranked_respects_top_n_limit():
-    generator = ReportGenerator(top_n=1, must_watch_top_n=5)
-    stocks = [_stock("HIGH", score=90), _stock("LOW", score=10)]
-
-    html = generator.generate(current=stocks, events=[], analyzed=[])
-
-    assert "HIGH" in html
-    # LOW only shouldn't appear in the Top Ranked table (top_n=1 truncates it there);
-    # it may still not appear anywhere else since it has no events/analysis.
-    assert html.count("LOW") == 0
+def _generator(
+    must_watch_top_n: int | None = None,
+    bucket_high: float = 70.0,
+    bucket_medium: float = 40.0,
+) -> ReportGenerator:
+    scorer = ConvictionScorer(RANKING_CONFIG_PATH)
+    if must_watch_top_n is not None:
+        scorer.must_watch_top_n = must_watch_top_n
+    return ReportGenerator(scorer, bucket_high, bucket_medium)
 
 
 def test_risk_summary_counts_high_beta_and_short_float():
-    generator = ReportGenerator(top_n=10, must_watch_top_n=5)
+    generator = _generator()
     stocks = [
         _stock("AAA", score=50, beta=2.0, short_float=15.0),
         _stock("BBB", score=40, beta=0.5, short_float=2.0),
@@ -107,12 +72,12 @@ def test_risk_summary_counts_high_beta_and_short_float():
 
 
 def test_must_watch_respects_top_n_but_full_analysis_shows_everyone():
-    generator = ReportGenerator(top_n=10, must_watch_top_n=1)
+    generator = _generator(must_watch_top_n=1)
     ranked = [_stock("FIRST", score=90), _stock("SECOND", score=80)]
 
     html = generator.generate(current=ranked, events=[], analyzed=ranked)
 
-    must_watch_section = html.split("Must-Watch Now")[1].split("New Candidates")[0]
+    must_watch_section = html.split("Must-Watch Now")[1].split("Full Analysis")[0]
     full_analysis_section = html.split("Full Analysis")[1]
 
     assert "FIRST" in must_watch_section
@@ -122,7 +87,7 @@ def test_must_watch_respects_top_n_but_full_analysis_shows_everyone():
 
 
 def test_must_watch_shows_one_line_reason_from_first_sentence():
-    generator = ReportGenerator(top_n=10, must_watch_top_n=5)
+    generator = _generator()
     stock = _stock(
         "AAA",
         score=90,
@@ -139,13 +104,13 @@ def test_must_watch_shows_one_line_reason_from_first_sentence():
 
     html = generator.generate(current=[stock], events=[], analyzed=[stock])
 
-    must_watch_section = html.split("Must-Watch Now")[1].split("New Candidates")[0]
+    must_watch_section = html.split("Must-Watch Now")[1].split("Full Analysis")[0]
     assert "Strong breakout above resistance." in must_watch_section
     assert "Volume confirms the move" not in must_watch_section
 
 
 def test_must_watch_omits_entry_zone_when_no_nearest_support():
-    generator = ReportGenerator(top_n=10, must_watch_top_n=5)
+    generator = _generator()
     stock = _stock(
         "AAA",
         score=90,
@@ -161,15 +126,96 @@ def test_must_watch_omits_entry_zone_when_no_nearest_support():
 
     html = generator.generate(current=[stock], events=[], analyzed=[stock])
 
-    must_watch_section = html.split("Must-Watch Now")[1].split("New Candidates")[0]
+    must_watch_section = html.split("Must-Watch Now")[1].split("Full Analysis")[0]
     assert "Entry zone" not in must_watch_section
 
 
 def test_report_never_renders_placeholders_or_na():
-    generator = ReportGenerator(top_n=10, must_watch_top_n=5)
+    generator = _generator()
     stock = _stock("AAA", score=50)
 
     html = generator.generate(current=[stock], events=[], analyzed=[stock])
 
     assert "placeholder" not in html.lower()
     assert "n/a" not in html.lower()
+
+
+def test_redundant_sections_are_gone():
+    generator = _generator()
+    stock = _stock("AAA", score=50)
+
+    html = generator.generate(
+        current=[stock], events=[_event("AAA", ChangeType.NEW)], analyzed=[stock]
+    )
+
+    assert "New Candidates" not in html
+    assert "Updated Candidates" not in html
+    assert "Top Ranked Stocks" not in html
+    assert "Score Breakdown" not in html
+
+
+def test_full_analysis_shows_conviction_score_and_tier():
+    generator = _generator(bucket_high=70.0, bucket_medium=40.0)
+    # High momentum, high AI confidence, corroborated news -> well above 70.
+    stock = _stock(
+        "AAA",
+        score=90,
+        analysis=ClaudeAnalysis(
+            reasoning="r",
+            risk="r",
+            entry="e",
+            stop_loss="s",
+            profit_target="t",
+            confidence="High",
+            trade_quality="A",
+        ),
+    )
+
+    html = generator.generate(current=[stock], events=[], analyzed=[stock])
+    card = html.split("Full Analysis")[1]
+
+    assert 'tier-high"' in card
+    assert "Conviction" in card
+
+
+def test_full_analysis_low_conviction_gets_low_tier():
+    generator = _generator(bucket_high=70.0, bucket_medium=40.0)
+    # Low momentum, no analysis (default confidence 50), no news -> below 40.
+    stock = _stock("AAA", score=10)
+
+    html = generator.generate(current=[stock], events=[], analyzed=[stock])
+    card = html.split("Full Analysis")[1]
+
+    assert 'tier-low"' in card
+
+
+def test_change_reason_appears_as_flag_on_full_analysis_card():
+    generator = _generator()
+    stock = _stock("AAA", score=50)
+
+    html = generator.generate(
+        current=[stock],
+        events=[
+            _event(
+                "AAA",
+                ChangeType.SCORE_CHANGE,
+                description="AAA score changed by +12.3.",
+            )
+        ],
+        analyzed=[stock],
+    )
+    card = html.split("Full Analysis")[1]
+
+    assert "AAA score changed by +12.3." in card
+
+
+def test_full_analysis_omits_support_block_when_nothing_to_show():
+    generator = _generator()
+    # No analysis, no fibonacci, no news -> the de-emphasized support block
+    # (risk/fibonacci/news) should not render an empty div.
+    stock = _stock("AAA", score=50)
+
+    html = generator.generate(current=[stock], events=[], analyzed=[stock])
+    card = html.split("Full Analysis")[1]
+
+    assert "fa-support" not in card

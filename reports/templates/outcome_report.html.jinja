@@ -7,18 +7,18 @@
 {% from "_data_table.html.jinja" import data_table %}
 {% include "_data_table_styles.html.jinja" %}
 <style>
-  body { font-family: -apple-system, Segoe UI, Arial, sans-serif; background: #0b0e14; color: #e6e6e6; margin: 0; padding: 24px; max-width: 720px; }
+  body { font-family: -apple-system, Segoe UI, Arial, sans-serif; background: var(--bg-base); color: var(--text-primary); margin: 0; padding: 24px; max-width: 720px; }
   h1 { font-size: 20px; margin-bottom: 4px; }
-  .timestamp { color: #9aa4b2; font-size: 13px; margin-bottom: 24px; }
+  .timestamp { color: var(--text-secondary); font-size: 13px; margin-bottom: 24px; }
   section { margin-bottom: 32px; }
-  h2 { font-size: 15px; text-transform: uppercase; letter-spacing: 0.04em; color: #9aa4b2; border-bottom: 1px solid #232838; padding-bottom: 6px; }
+  h2 { font-size: 15px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-secondary); border-bottom: 1px solid var(--border); padding-bottom: 6px; }
   .summary-grid { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 16px; }
-  .summary-tile { background: #131826; border: 1px solid #232838; border-radius: 8px; padding: 12px 16px; min-width: 120px; }
-  .summary-tile .value { font-size: 22px; font-weight: 700; }
-  .summary-tile .label { font-size: 12px; color: #9aa4b2; text-transform: uppercase; letter-spacing: 0.03em; }
-  .status-win { color: #4ade80; font-weight: 600; }
-  .status-loss { color: #f87171; font-weight: 600; }
-  .status-pending { color: #facc15; font-weight: 600; }
+  .summary-tile { background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 12px 16px; min-width: 120px; }
+  .summary-tile .value { font-size: 22px; font-weight: 700; color: var(--text-primary); }
+  .summary-tile .label { font-size: 12px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.03em; }
+  .status-win { color: var(--positive); font-weight: 600; }
+  .status-loss { color: var(--negative); font-weight: 600; }
+  .status-pending { color: var(--neutral); font-weight: 600; }
 </style>
 </head>
 <body>
