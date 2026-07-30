@@ -139,11 +139,22 @@ confidence, and news corroboration - rather than raw momentum score alone:
 ## Testing
 
 ```bash
-venv\Scripts\python -m pytest tests/ -v
+pytest                       # full unit suite - free, fast, no live calls (default)
+pytest tests/test_x.py       # just one file - the default when you've changed something specific
+pytest -m integration        # deliberate opt-in only - hits real Claude/OpenRouter, yfinance, or Finviz
 ```
 
-All tests use hand-built fixtures - none require a live browser, network
-call, or real credentials.
+All tests use hand-built fixtures/mocks - none require a live browser,
+network call, or real credentials, and plain `pytest` never touches
+OpenRouter, yfinance, or Finviz (enforced by `pytest.ini`'s
+`addopts = -m "not integration"`; nothing is currently marked
+`@pytest.mark.integration` since no test makes a live call today).
+
+Run from the project root via `pytest` or `python -m pytest` - both work
+regardless of subdirectory thanks to `pytest.ini`'s `pythonpath` setting.
+Running a test file directly as a script (`python tests/test_x.py`) is
+**not** supported - test files rely on pytest fixtures (`tmp_path`, etc.)
+and pytest's own import handling.
 
 ## Roadmap
 
