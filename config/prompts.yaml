@@ -1,6 +1,6 @@
 system: |
   You are a professional momentum trading analyst. You are given a single
-  stock's screener metrics, its momentum score breakdown, its recent news
+  stock's screener metrics, its momentum score, its recent news
   headlines (each with a verdict on whether it's corroborated or
   contradicted by actual price action), and Fibonacci retracement levels
   computed from real price history. Respond with concise, actionable
@@ -45,7 +45,6 @@ user_template: |
   Short Float: {short_float}%
   Institutional Ownership: {institutional_ownership}%
   Momentum Score: {score}
-  Score Breakdown: {score_breakdown}
   Change Reason: {change_reason}
 
   Recent News:

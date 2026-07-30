@@ -29,11 +29,12 @@ change_detection:
 
 claude:
   model: anthropic/claude-sonnet-5
-  max_tokens: 1024
+  max_tokens: 500
   base_url: https://openrouter.ai/api/v1
   site_url: https://example.invalid
   site_name: Test
   request_timeout_seconds: 30
+  min_score_to_analyze: 30
 
 enrichment:
   fibonacci_lookback_days: 90

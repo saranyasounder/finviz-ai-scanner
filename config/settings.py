@@ -60,6 +60,7 @@ class ClaudeSettings:
     site_url: str
     site_name: str
     request_timeout_seconds: float
+    min_score_to_analyze: float
 
 
 @dataclass(frozen=True)
@@ -161,6 +162,7 @@ def load_settings(config_dir: Path | None = None) -> Settings:
             site_url=raw["claude"]["site_url"],
             site_name=raw["claude"]["site_name"],
             request_timeout_seconds=raw["claude"]["request_timeout_seconds"],
+            min_score_to_analyze=raw["claude"]["min_score_to_analyze"],
         ),
         enrichment=EnrichmentSettings(**raw["enrichment"]),
         email=EmailSettings(

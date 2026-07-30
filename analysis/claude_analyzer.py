@@ -6,7 +6,7 @@ from pathlib import Path
 
 import yaml
 from loguru import logger
-from openai import OpenAI
+from openai import APIStatusError, OpenAI
 
 from config.settings import ClaudeSettings
 from models.claude_analysis import ClaudeAnalysis
@@ -19,6 +19,12 @@ class ClaudeAnalyzer:
     """Sends only changed/top-ranked stocks to Claude for trade analysis.
     Claude never receives the raw screener CSV - only the already-scored,
     already-filtered StockCandidate fields relevant to a trade decision.
+
+    Below min_score_to_analyze, a stock skips the API call entirely (it still
+    keeps its score/news/Fibonacci data, just no AI writeup) - a cost control
+    for accounts on a tight OpenRouter budget. On a 402 (out of credits), the
+    whole remaining batch is abandoned rather than retried per-ticker, since
+    it's an account-level condition that won't resolve mid-cycle.
 
     Routed through OpenRouter's OpenAI-compatible API rather than Anthropic's
     native API, since that's the key/provider configured for this project."""
@@ -45,13 +51,36 @@ class ClaudeAnalyzer:
     def analyze(
         self, stocks: list[StockCandidate], change_reasons: dict[str, str]
     ) -> list[StockCandidate]:
-        for stock in stocks:
+        skipped_low_score = 0
+
+        for index, stock in enumerate(stocks):
+            if stock.score < self.settings.min_score_to_analyze:
+                skipped_low_score += 1
+                continue
+
             try:
                 stock.analysis = self._analyze_one(
                     stock, change_reasons.get(stock.ticker, "")
                 )
+            except APIStatusError as exc:
+                if exc.status_code == 402:
+                    remaining = len(stocks) - index
+                    logger.error(
+                        f"OpenRouter is out of credits (402) - skipping AI analysis "
+                        f"for the remaining {remaining} candidate(s) this cycle. Add "
+                        f"credits at https://openrouter.ai/settings/credits."
+                    )
+                    break
+                logger.error(f"Claude analysis failed for {stock.ticker}: {exc}")
             except Exception as exc:
                 logger.error(f"Claude analysis failed for {stock.ticker}: {exc}")
+
+        if skipped_low_score:
+            logger.info(
+                f"Skipped AI analysis for {skipped_low_score} candidate(s) below "
+                f"the momentum-score threshold ({self.settings.min_score_to_analyze})."
+            )
+
         return stocks
 
     def _analyze_one(self, stock: StockCandidate, change_reason: str) -> ClaudeAnalysis:
@@ -71,7 +100,6 @@ class ClaudeAnalyzer:
             short_float=stock.short_float,
             institutional_ownership=stock.institutional_ownership,
             score=stock.score,
-            score_breakdown=stock.score_breakdown,
             change_reason=change_reason,
             news_section=self._build_news_section(stock),
             fibonacci_section=self._build_fibonacci_section(stock),
