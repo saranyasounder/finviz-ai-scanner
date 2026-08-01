@@ -120,6 +120,7 @@ class Settings:
     prompts_config_path: Path
     market_holidays_config_path: Path
     ranking_config_path: Path
+    analysis_config_path: Path
     outcomes_db_path: Path
 
 
@@ -183,5 +184,6 @@ def load_settings(config_dir: Path | None = None) -> Settings:
         prompts_config_path=config_dir / "prompts.yaml",
         market_holidays_config_path=config_dir / "market_holidays.yaml",
         ranking_config_path=config_dir / "ranking.yaml",
+        analysis_config_path=config_dir / "analysis.yaml",
         outcomes_db_path=BASE_DIR / "data" / "outcomes.db",
     )

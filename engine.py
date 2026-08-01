@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from loguru import logger
 
+from analysis.candidate_selector import CandidateSelector
 from analysis.change_detector import ChangeDetector
 from analysis.claude_analyzer import ClaudeAnalyzer
 from analysis.conviction_scorer import ConvictionScorer
@@ -14,7 +15,6 @@ from browser.browser import Browser
 from config.settings import Settings
 from finviz.collector import FinvizCollector
 from market_data.price_history_provider import PriceHistoryProvider
-from models.change_event import ChangeType
 from notifications.email_service import EmailService
 from reports.report_generator import ReportGenerator
 from storage.snapshot_manager import SnapshotManager
@@ -32,25 +32,25 @@ class TradingEngine:
         scorer: MomentumScorer,
         snapshot_manager: SnapshotManager,
         change_detector: ChangeDetector,
+        candidate_selector: CandidateSelector,
         enrichment_service: EnrichmentService,
         claude_analyzer: ClaudeAnalyzer,
         conviction_scorer: ConvictionScorer,
         outcome_tracker: AlertOutcomeTracker,
         report_generator: ReportGenerator,
         email_service: EmailService,
-        top_n: int,
     ):
         self.collector = collector
         self.scorer = scorer
         self.snapshot_manager = snapshot_manager
         self.change_detector = change_detector
+        self.candidate_selector = candidate_selector
         self.enrichment_service = enrichment_service
         self.claude_analyzer = claude_analyzer
         self.conviction_scorer = conviction_scorer
         self.outcome_tracker = outcome_tracker
         self.report_generator = report_generator
         self.email_service = email_service
-        self.top_n = top_n
 
     @classmethod
     def from_settings(cls, settings: Settings) -> "TradingEngine":
@@ -94,6 +94,7 @@ class TradingEngine:
             change_detector=ChangeDetector(
                 settings.change_detection, settings.snapshots.top_n
             ),
+            candidate_selector=CandidateSelector(settings.analysis_config_path),
             enrichment_service=enrichment_service,
             claude_analyzer=ClaudeAnalyzer(
                 settings.claude,
@@ -104,7 +105,6 @@ class TradingEngine:
             outcome_tracker=outcome_tracker,
             report_generator=ReportGenerator(conviction_scorer),
             email_service=EmailService(settings.email),
-            top_n=settings.snapshots.top_n,
         )
 
     def run(self) -> None:
@@ -141,16 +141,16 @@ class TradingEngine:
         previous = self.snapshot_manager.load_latest()
 
         if previous is None:
-            top_stocks = scored[: self.top_n]
+            candidates = self.candidate_selector.select(scored)
             logger.info(
                 f"Initial scan - no previous snapshot. Establishing a baseline of "
-                f"{len(scored)} stock(s); analyzing the Top {len(top_stocks)} for "
-                f"the first report."
+                f"{len(scored)} stock(s); analyzing the top {len(candidates)} by "
+                f"volume for the first report."
             )
             self._analyze_report_and_email(
                 scored=scored,
                 events=[],
-                candidates=top_stocks,
+                candidates=candidates,
                 subject="Initial scan - baseline established",
             )
             self.snapshot_manager.save(scored)
@@ -163,12 +163,12 @@ class TradingEngine:
             self.snapshot_manager.save(scored)
             return
 
-        changed_stocks = self._select_changed(scored, events)
+        candidates = self.candidate_selector.select(scored)
 
         self._analyze_report_and_email(
             scored=scored,
             events=events,
-            candidates=changed_stocks,
+            candidates=candidates,
             subject=f"{len(events)} change(s) detected",
         )
 
@@ -181,6 +181,9 @@ class TradingEngine:
         candidates,
         subject: str,
     ) -> None:
+        selected_tickers = {s.ticker for s in candidates}
+        not_analyzed = [s for s in scored if s.ticker not in selected_tickers]
+
         try:
             candidates = self.enrichment_service.enrich(candidates)
         except Exception as exc:
@@ -204,7 +207,9 @@ class TradingEngine:
 
         html_report = None
         try:
-            html_report = self.report_generator.generate(scored, events, ranked)
+            html_report = self.report_generator.generate(
+                scored, events, ranked, not_analyzed
+            )
         except Exception as exc:
             logger.error(f"Report generation failed: {exc}")
 
@@ -243,18 +248,3 @@ class TradingEngine:
         if remaining > 0:
             subject += f" +{remaining} more"
         return subject
-
-    @staticmethod
-    def _select_changed(scored, events):
-        """Stocks worth sending to Claude: everything except tickers whose only
-        change was leaving the Top N (they don't need a fresh decision re-run)."""
-
-        by_ticker = {s.ticker: s for s in scored}
-
-        analysis_worthy = {
-            event.ticker
-            for event in events
-            if event.change_type != ChangeType.LEFT_TOP_N
-        }
-
-        return [by_ticker[t] for t in analysis_worthy if t in by_ticker]

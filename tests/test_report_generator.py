@@ -62,7 +62,7 @@ def _must_watch_section(html: str) -> str:
 
 
 def _trade_alerts_section(html: str) -> str:
-    return html.split("Trade Alerts")[1]
+    return html.split("Trade Alerts")[1].split("Other Candidates")[0]
 
 
 def test_risk_summary_counts_high_beta_and_short_float():
@@ -72,7 +72,7 @@ def test_risk_summary_counts_high_beta_and_short_float():
         _stock("BBB", score=40, beta=0.5, short_float=2.0),
     ]
 
-    html = generator.generate(current=stocks, events=[], analyzed=[])
+    html = generator.generate(current=stocks, events=[], analyzed=[], not_analyzed=[])
 
     assert (
         "1 candidate(s) with beta &gt; 1.5" in html
@@ -88,7 +88,9 @@ def test_must_watch_respects_top_n_but_trade_alerts_shows_everyone():
         _stock("SECOND", score=80, analysis=_analysis()),
     ]
 
-    html = generator.generate(current=ranked, events=[], analyzed=ranked)
+    html = generator.generate(
+        current=ranked, events=[], analyzed=ranked, not_analyzed=[]
+    )
 
     must_watch_section = _must_watch_section(html)
     trade_alerts_section = _trade_alerts_section(html)
@@ -103,7 +105,9 @@ def test_report_never_renders_placeholders_or_na():
     generator = _generator()
     stock = _stock("AAA", score=50, analysis=_analysis())
 
-    html = generator.generate(current=[stock], events=[], analyzed=[stock])
+    html = generator.generate(
+        current=[stock], events=[], analyzed=[stock], not_analyzed=[]
+    )
 
     assert "placeholder" not in html.lower()
     assert "n/a" not in html.lower()
@@ -113,7 +117,9 @@ def test_redundant_sections_are_gone():
     generator = _generator()
     stock = _stock("AAA", score=50, analysis=_analysis())
 
-    html = generator.generate(current=[stock], events=[], analyzed=[stock])
+    html = generator.generate(
+        current=[stock], events=[], analyzed=[stock], not_analyzed=[]
+    )
 
     assert "New Candidates" not in html
     assert "Updated Candidates" not in html
@@ -134,7 +140,9 @@ def test_must_watch_table_shows_action_entry_stop_target_confidence_news():
         ),
     )
 
-    html = generator.generate(current=[stock], events=[], analyzed=[stock])
+    html = generator.generate(
+        current=[stock], events=[], analyzed=[stock], not_analyzed=[]
+    )
     section = _must_watch_section(html)
 
     assert "ENTER NOW" in section
@@ -155,7 +163,9 @@ def test_must_watch_action_colors_map_correctly():
     ]
     generator2 = _generator(must_watch_top_n=4)
 
-    html = generator2.generate(current=stocks, events=[], analyzed=stocks)
+    html = generator2.generate(
+        current=stocks, events=[], analyzed=stocks, not_analyzed=[]
+    )
     section = _must_watch_section(html)
 
     assert "#22c55e" in section  # ENTER_NOW -> green
@@ -167,7 +177,9 @@ def test_must_watch_shows_no_decision_row_when_analysis_missing():
     generator = _generator()
     stock = _stock("AAA", score=50)  # no analysis
 
-    html = generator.generate(current=[stock], events=[], analyzed=[stock])
+    html = generator.generate(
+        current=[stock], events=[], analyzed=[stock], not_analyzed=[]
+    )
     section = _must_watch_section(html)
 
     assert "No AI decision this scan" in section
@@ -177,7 +189,9 @@ def test_ticker_column_uses_sticky_positioning():
     generator = _generator()
     stock = _stock("AAA", score=50, analysis=_analysis())
 
-    html = generator.generate(current=[stock], events=[], analyzed=[stock])
+    html = generator.generate(
+        current=[stock], events=[], analyzed=[stock], not_analyzed=[]
+    )
 
     assert "position: sticky" in html
 
@@ -186,7 +200,9 @@ def test_trade_alert_card_shows_action_badge_as_largest_element_in_order():
     generator = _generator()
     stock = _stock("AAA", score=90, analysis=_analysis(action="ENTER_NOW"))
 
-    html = generator.generate(current=[stock], events=[], analyzed=[stock])
+    html = generator.generate(
+        current=[stock], events=[], analyzed=[stock], not_analyzed=[]
+    )
     card = _trade_alerts_section(html)
 
     ticker_pos = card.index("AAA")
@@ -213,7 +229,9 @@ def test_trade_alert_card_shows_unavailable_message_when_no_analysis():
     generator = _generator()
     stock = _stock("AAA", score=50)  # no analysis
 
-    html = generator.generate(current=[stock], events=[], analyzed=[stock])
+    html = generator.generate(
+        current=[stock], events=[], analyzed=[stock], not_analyzed=[]
+    )
     card = _trade_alerts_section(html)
 
     assert "Analysis unavailable for this stock." in card
@@ -223,10 +241,74 @@ def test_no_grid_or_flexbox_in_must_watch_or_trade_alerts():
     generator = _generator()
     stock = _stock("AAA", score=50, analysis=_analysis())
 
-    html = generator.generate(current=[stock], events=[], analyzed=[stock])
+    html = generator.generate(
+        current=[stock], events=[], analyzed=[stock], not_analyzed=[]
+    )
     combined = _must_watch_section(html) + _trade_alerts_section(html)
 
     assert "display: flex" not in combined
     assert "display:flex" not in combined
     assert "display: grid" not in combined
     assert "display:grid" not in combined
+
+
+def _other_candidates_section(html: str) -> str:
+    return html.split("Other Candidates")[1].split("Risk Summary")[0]
+
+
+def test_not_analyzed_candidates_appear_in_other_candidates_section():
+    generator = _generator()
+    analyzed_stock = _stock("AAA", score=90, analysis=_analysis())
+    skipped_stock = _stock("ZZZ", score=15)
+
+    html = generator.generate(
+        current=[analyzed_stock, skipped_stock],
+        events=[],
+        analyzed=[analyzed_stock],
+        not_analyzed=[skipped_stock],
+    )
+    section = _other_candidates_section(html)
+
+    assert "ZZZ" in section
+    assert "15.0" in section
+    # The skipped stock's ticker shouldn't also leak into Must-Watch/Trade Alerts.
+    assert "ZZZ" not in _must_watch_section(html)
+    assert "ZZZ" not in _trade_alerts_section(html)
+
+
+def test_not_analyzed_section_sorted_by_momentum_score_descending():
+    generator = _generator()
+    low = _stock("LOW", score=20)
+    high = _stock("HIGH", score=60)
+
+    html = generator.generate(
+        current=[low, high], events=[], analyzed=[], not_analyzed=[low, high]
+    )
+    section = _other_candidates_section(html)
+
+    assert section.index("HIGH") < section.index("LOW")
+
+
+def test_other_candidates_section_shows_fallback_message_when_empty():
+    generator = _generator()
+    stock = _stock("AAA", score=90, analysis=_analysis())
+
+    html = generator.generate(
+        current=[stock], events=[], analyzed=[stock], not_analyzed=[]
+    )
+    section = _other_candidates_section(html)
+
+    assert "Every scanned candidate was AI-analyzed this cycle." in section
+
+
+def test_other_candidates_section_has_no_action_or_confidence_columns():
+    generator = _generator()
+    skipped_stock = _stock("ZZZ", score=15)
+
+    html = generator.generate(
+        current=[skipped_stock], events=[], analyzed=[], not_analyzed=[skipped_stock]
+    )
+    section = _other_candidates_section(html)
+
+    assert "Confidence" not in section
+    assert "Action" not in section

@@ -17,12 +17,15 @@ class ReportGenerator:
     per Must-Watch candidate - ticker, action, entry zone, stop, target,
     confidence, news alignment); Part 2 is one alert card per ranked
     candidate (action badge as the dominant visual element, confidence,
-    entry/stop/target, reasoning). `analyzed` is expected to already be
-    ordered by the caller (conviction score, highest first) - this class
-    renders in whatever order it's given, it doesn't rank. ConvictionScorer
-    is used only for must_watch_top_n here; the blended conviction score
-    itself is not displayed - the schema's own confidence.score/grade is
-    the visible signal now."""
+    entry/stop/target, reasoning), followed by a de-emphasized "Other
+    Candidates" table for everything CandidateSelector didn't send to
+    enrichment/AI this cycle - momentum score only, clearly labeled as not
+    AI-analyzed. `analyzed` is expected to already be ordered by the caller
+    (conviction score, highest first) - this class renders in whatever
+    order it's given, it doesn't rank. ConvictionScorer is used only for
+    must_watch_top_n here; the blended conviction score itself is not
+    displayed - the schema's own confidence.score/grade is the visible
+    signal now."""
 
     def __init__(self, conviction_scorer: ConvictionScorer):
         self.conviction_scorer = conviction_scorer
@@ -36,6 +39,7 @@ class ReportGenerator:
         current: list[StockCandidate],
         events: list[ChangeEvent],
         analyzed: list[StockCandidate],
+        not_analyzed: list[StockCandidate],
     ) -> str:
         must_watch = analyzed[: self.conviction_scorer.must_watch_top_n]
 
@@ -46,6 +50,7 @@ class ReportGenerator:
             market_summary=self._build_market_summary(current, events),
             must_watch=must_watch,
             full_analysis=analyzed,
+            not_analyzed=sorted(not_analyzed, key=lambda s: s.score, reverse=True),
             risk_summary=self._build_risk_summary(current),
         )
 

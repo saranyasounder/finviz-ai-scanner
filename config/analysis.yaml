@@ -1,0 +1,17 @@
+# Candidate selection: which of the full scanned universe are worth
+# spending news/Fibonacci/AI-analysis credits on, every cycle.
+#
+# Ranked by raw share Volume (highest first) - a liquidity/fillability gate
+# (can this actually be traded right now without slippage), not Relative
+# Volume (which measures how unusual today is for that specific stock, and
+# is already a separate MomentumScorer input - a different question).
+#
+# This replaces change-detection as the criterion for "who gets analyzed":
+# a hard, predictable cap of at most volume_top_n AI calls per triggering
+# cycle, regardless of how many tickers technically changed. The existing
+# claude.min_score_to_analyze threshold (config/settings.yaml) still applies
+# on top of this selection - a candidate must be BOTH liquid enough to make
+# this list AND momentum-strong enough to clear that threshold to actually
+# get analyzed.
+
+volume_top_n: 10

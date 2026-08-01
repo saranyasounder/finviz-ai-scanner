@@ -33,6 +33,9 @@ def _make_engine(previous=None, events=None):
     change_detector = MagicMock()
     change_detector.detect.return_value = events or []
 
+    candidate_selector = MagicMock()
+    candidate_selector.select.side_effect = lambda stocks: stocks
+
     enrichment_service = MagicMock()
     enrichment_service.enrich.side_effect = lambda candidates: candidates
 
@@ -56,23 +59,25 @@ def _make_engine(previous=None, events=None):
         scorer=scorer,
         snapshot_manager=snapshot_manager,
         change_detector=change_detector,
+        candidate_selector=candidate_selector,
         enrichment_service=enrichment_service,
         claude_analyzer=claude_analyzer,
         conviction_scorer=conviction_scorer,
         outcome_tracker=outcome_tracker,
         report_generator=report_generator,
         email_service=email_service,
-        top_n=10,
     )
 
     return (
         engine,
         snapshot_manager,
         change_detector,
+        candidate_selector,
         enrichment_service,
         claude_analyzer,
         conviction_scorer,
         outcome_tracker,
+        report_generator,
         email_service,
     )
 
@@ -82,43 +87,49 @@ def test_initial_scan_analyzes_top_n_and_emails_but_skips_change_detection():
         engine,
         snapshot_manager,
         change_detector,
+        candidate_selector,
         enrichment_service,
         claude_analyzer,
         conviction_scorer,
         outcome_tracker,
+        report_generator,
         email_service,
     ) = _make_engine(previous=None)
 
     engine.run()
 
     change_detector.detect.assert_not_called()
+    candidate_selector.select.assert_called_once()
     enrichment_service.enrich.assert_called_once()
     claude_analyzer.analyze.assert_called_once()
     email_service.send.assert_called_once()
     snapshot_manager.save.assert_called_once()
 
 
-def test_no_changes_skips_enrichment_claude_and_email():
+def test_no_changes_skips_selection_enrichment_claude_and_email():
     (
         engine,
         snapshot_manager,
         change_detector,
+        candidate_selector,
         enrichment_service,
         claude_analyzer,
         conviction_scorer,
         outcome_tracker,
+        report_generator,
         email_service,
     ) = _make_engine(previous=[_stock()], events=[])
 
     engine.run()
 
+    candidate_selector.select.assert_not_called()
     enrichment_service.enrich.assert_not_called()
     claude_analyzer.analyze.assert_not_called()
     email_service.send.assert_not_called()
     snapshot_manager.save.assert_called_once()
 
 
-def test_changes_trigger_enrichment_claude_and_email():
+def test_changes_trigger_selection_enrichment_claude_and_email():
     event = ChangeEvent(
         ticker="AAA",
         change_type=ChangeType.SCORE_CHANGE,
@@ -131,10 +142,12 @@ def test_changes_trigger_enrichment_claude_and_email():
         engine,
         snapshot_manager,
         change_detector,
+        candidate_selector,
         enrichment_service,
         claude_analyzer,
         conviction_scorer,
         outcome_tracker,
+        report_generator,
         email_service,
     ) = _make_engine(previous=[_stock()], events=[event])
 
@@ -142,6 +155,7 @@ def test_changes_trigger_enrichment_claude_and_email():
 
     engine.run()
 
+    candidate_selector.select.assert_called_once()
     enrichment_service.enrich.assert_called_once()
     claude_analyzer.analyze.assert_called_once()
     conviction_scorer.rank.assert_called_once()
@@ -151,15 +165,51 @@ def test_changes_trigger_enrichment_claude_and_email():
     snapshot_manager.save.assert_called_once()
 
 
+def test_report_generator_receives_not_analyzed_candidates():
+    event = ChangeEvent(
+        ticker="AAA",
+        change_type=ChangeType.SCORE_CHANGE,
+        old_value=5,
+        new_value=10,
+        timestamp=datetime.now(),
+        description="AAA score changed.",
+    )
+    (
+        engine,
+        snapshot_manager,
+        change_detector,
+        candidate_selector,
+        enrichment_service,
+        claude_analyzer,
+        conviction_scorer,
+        outcome_tracker,
+        report_generator,
+        email_service,
+    ) = _make_engine(previous=[_stock()], events=[event])
+
+    # scored = [_stock()] (ticker "AAA"); selector picks nobody this time ->
+    # AAA should show up as "not analyzed" in the report call.
+    candidate_selector.select.side_effect = lambda stocks: []
+    claude_analyzer.analyze.return_value = []
+
+    engine.run()
+
+    args, _ = report_generator.generate.call_args
+    scored_arg, events_arg, analyzed_arg, not_analyzed_arg = args
+    assert [s.ticker for s in not_analyzed_arg] == ["AAA"]
+
+
 def test_record_due_checkpoints_runs_every_cycle_even_with_no_changes():
     (
         engine,
         snapshot_manager,
         change_detector,
+        candidate_selector,
         enrichment_service,
         claude_analyzer,
         conviction_scorer,
         outcome_tracker,
+        report_generator,
         email_service,
     ) = _make_engine(previous=[_stock()], events=[])
 
@@ -182,10 +232,12 @@ def test_subject_reflects_top_must_watch_ticker():
         engine,
         snapshot_manager,
         change_detector,
+        candidate_selector,
         enrichment_service,
         claude_analyzer,
         conviction_scorer,
         outcome_tracker,
+        report_generator,
         email_service,
     ) = _make_engine(previous=[_stock()], events=[event])
     claude_analyzer.analyze.return_value = [_stock(ticker="AAA")]
@@ -201,10 +253,12 @@ def test_enrichment_failure_still_allows_claude_and_email():
         engine,
         snapshot_manager,
         change_detector,
+        candidate_selector,
         enrichment_service,
         claude_analyzer,
         conviction_scorer,
         outcome_tracker,
+        report_generator,
         email_service,
     ) = _make_engine(previous=None)
     enrichment_service.enrich.side_effect = RuntimeError("browser crashed")

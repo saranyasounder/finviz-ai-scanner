@@ -133,6 +133,41 @@
   {% endif %}
 </section>
 
+{#- Everyone CandidateSelector didn't send to enrichment/AI this cycle
+    (outside the top-N-by-volume liquidity gate). Deliberately de-emphasized
+    (smaller text, muted color, no action/confidence columns since there's
+    no AI decision to show) - momentum score only, clearly labeled so it
+    reads as "still scanned, just not spent AI credit on" rather than
+    looking like a missing/broken row. #}
+<section>
+  <h2>Other Candidates (Not AI-Analyzed This Cycle)</h2>
+  {% if not_analyzed %}
+  <p>Momentum score only - outside this cycle's top-volume selection for news/Fibonacci/AI analysis.</p>
+  <div style="overflow-x: auto; max-width: 100%;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse: collapse; width: 100%; min-width: 320px; font-family: -apple-system, Segoe UI, Arial, sans-serif; font-size: 13px; background-color: #0a0e14; color: #828ea0;">
+    <thead>
+      <tr>
+        <th style="background-color: #141a24; color: #828ea0; text-align: left; padding: 8px 12px; border-bottom: 1px solid #232c3a; font-size: 11px; text-transform: uppercase;">Ticker</th>
+        <th style="background-color: #141a24; color: #828ea0; text-align: left; padding: 8px 12px; border-bottom: 1px solid #232c3a; font-size: 11px; text-transform: uppercase;">Company</th>
+        <th style="background-color: #141a24; color: #828ea0; text-align: left; padding: 8px 12px; border-bottom: 1px solid #232c3a; font-size: 11px; text-transform: uppercase;">Momentum Score</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for stock in not_analyzed %}
+      <tr>
+        <td style="padding: 8px 12px; border-bottom: 1px solid #1b2030; font-weight: 700; color: #c7cdd6; white-space: nowrap;">{{ stock.ticker }}</td>
+        <td style="padding: 8px 12px; border-bottom: 1px solid #1b2030; white-space: nowrap;">{{ stock.company }}</td>
+        <td style="padding: 8px 12px; border-bottom: 1px solid #1b2030; white-space: nowrap;">{{ "%.1f"|format(stock.score) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}
+  <p>Every scanned candidate was AI-analyzed this cycle.</p>
+  {% endif %}
+</section>
+
 <section>
   <h2>Risk Summary</h2>
   <p class="risk-summary">{{ risk_summary }}</p>
